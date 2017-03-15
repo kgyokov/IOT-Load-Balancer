@@ -143,13 +143,12 @@ handle_info({tcp,_,Binary},S = #state{client_socket = ClientSocket,
   {noreply,S};
 
 handle_info({tcp_closed, _Socket},S) ->
-  {stop,tcp_closed,S};
+  {stop,normal,S};
 
 handle_info({tcp_error, _Socket, _Reason},S) ->
-  {stop,tcp_error,S};
+  {stop,normal,S};
 
 handle_info(_Info, State) ->
-  error_logger:info_msg("Unexpected message ~p~n",[_Info]),
   {noreply, State}.
 
 %%--------------------------------------------------------------------

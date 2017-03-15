@@ -130,9 +130,6 @@ handle_cast({packet,Packet = #'CONNECT'{}},S = #state{connected = false,
   iotlb_bsender:forward_to_server(Sender,Packet),
   {noreply, S#state{sender_pid = Sender,connected = true}};
 
-handle_cast({packet,#'CONNECT'{}},S = #state{connected = true}) ->
-  {stop, duplicate_connect, S}; %%Maybe specify a different reason
-
 handle_cast({packet,_Packet},S = #state{connected = false}) ->
   {stop, premature_packet, S}; %%Maybe specify a different reason
 

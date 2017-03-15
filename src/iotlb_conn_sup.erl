@@ -56,10 +56,6 @@
 start_link() ->
   supervisor:start_link(?MODULE, []).
 
-%%start_connection(Transport,Socket,Opts) ->
-%%  ReceiverPid = self(), %%@todo: maybe pass this explicitly
-%%  supervisor:start_child(?SERVER,ok).
-
 start_connection(SupPid,ReceiverPid,TSO) ->
   supervisor:start_child(SupPid,?CONN_SPEC(ReceiverPid,SupPid,TSO)).
 

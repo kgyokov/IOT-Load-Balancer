@@ -22,9 +22,7 @@ start(_StartType, _StartArgs) ->
         {verify, verify_peer}
     ],
     ProtOpts = [
-        {shutdown,5000},
-        %%{connection_type, supervisor} %% mqtt_ranch_sup is an adaptor for the mqtt_connection_sup
-        {connection_type, worker} %% mqtt_ranch_sup is an adaptor for the mqtt_connection_sup
+        {shutdown,5000}
     ],
 
     {ok,_} = mqttl_sup:start_listener(tcp,TransOpts,iotlb_conn,ProtOpts),
