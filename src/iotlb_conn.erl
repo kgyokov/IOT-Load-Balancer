@@ -80,8 +80,10 @@ handle_packet(Pid,Packet) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([ReceiverPid,SupPid,TSO]) ->
+init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   link(ReceiverPid),
+  TimeOut = proplists:get_value(conn_timeout,Opts,10000),
+  erlang:send_after(TimeOut,self(),conn_timeout),
   {ok, #state{receiver_pid = ReceiverPid,
               sup_pid = SupPid,
               connected = false,
@@ -155,6 +157,10 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
+handle_info(conn_timeout, S = #state{connected = false}) ->
+  {stop, conn_timeout, S};
+
 handle_info(_Info, State) ->
   {noreply, State}.
 
