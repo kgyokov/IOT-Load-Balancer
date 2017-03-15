@@ -24,7 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {transport,client_socket,broker_socket,opts,broker_spec}).
+-record(state, {transport,client_socket,broker_socket,opts}).
 
 %%%===================================================================
 %%% API
@@ -38,8 +38,8 @@
 %%--------------------------------------------------------------------
 -spec(start_link({Transport::any(),Socket::any(),Opts::[any()]},BrokerSpec::any()) ->
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link({Transport,Socket,Opts},BrokerSpec) ->
-  gen_server:start_link(?MODULE, [Transport,Socket,Opts,BrokerSpec], []).
+start_link({Transport,ClientSocket,Opts},BrokerSocket) ->
+  gen_server:start_link(?MODULE, [Transport,ClientSocket,Opts,BrokerSocket], []).
 
 forward_to_server(Pid,Packet) ->
   gen_server:call(Pid,{to_broker,Packet}).
@@ -66,13 +66,11 @@ forward_to_server(Pid,Packet) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([Transport,Socket,Opts,BrokerSpec]) ->
-  process_flag(trap_exit,true),
-  self() ! async_init,
+init([Transport,ClientSocket,Opts,BrokerSocket]) ->
   {ok, #state{transport = Transport,
-              client_socket = Socket,
-              opts = Opts,
-              broker_spec = BrokerSpec}}.
+              client_socket = ClientSocket,
+              broker_socket = BrokerSocket,
+              opts = Opts}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,16 +87,6 @@ init([Transport,Socket,Opts,BrokerSpec]) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
-
-handle_call({to_broker,Packet},_From, S = #state{broker_socket = BrokerSocket}) ->
-  Binary = mqttl_builder:build_packet(Packet),
-  error_logger:info_msg("Sending to broker Packet ~p with Binary ~p~n",[Packet,Binary]),
-  case gen_tcp:send(BrokerSocket,Binary)of
-    ok ->
-      {reply,ok,S};
-    {error, _Reason} ->
-      {stop, unable_to_send, {error,_Reason}, S}
-  end;
 
 handle_call(_Request, _From, State) ->
   {noreply, ok, State}.
@@ -132,10 +120,6 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_info(async_init, S = #state{broker_spec = {Address,Port}}) ->
-  {ok,Socket} = gen_tcp:connect(Address,Port,[binary, {active,true}],10000),
-  {noreply, S#state{broker_socket = Socket}};
-
 handle_info({tcp,_,Binary},S = #state{client_socket = ClientSocket,
                                       transport = Transport}) ->
   error_logger:info_msg("Sending back binary ~p~n",[Binary]),
@@ -164,11 +148,11 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
-terminate(_Reason, #state{broker_socket = Socket}) ->
-  error_logger:info_msg("bidirectional sender terminatig with reason ~p~n",[_Reason]),
-  case Socket of
+terminate(_Reason, #state{broker_socket = BrokerSocket}) ->
+  error_logger:info_msg("Bidirectional sender terminatig with reason ~p~n",[_Reason]),
+  case BrokerSocket of
     undefined -> ok;
-    _ -> gen_tcp:close(Socket)
+    _ -> gen_tcp:close(BrokerSocket)
   end.
 
 %%--------------------------------------------------------------------

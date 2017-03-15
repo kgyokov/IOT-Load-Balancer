@@ -29,8 +29,7 @@
   transport_info ::any(),
   connected::boolean(),
   sup_pid :: pid(),
-  sender_pid :: pid(),                 %% The process sending to the actual device
-  receiver_pid ::pid()               %% The process receiving from the actual device TODO: Do we even need to know this???
+  socket :: pid()                 %% The process sending to the actual device
 }).
 
 %%%===================================================================
@@ -60,7 +59,7 @@ unexpected_disconnect(_Pid,_Details) -> ok. %%gen_server:cast(Pid,{disconnect,De
 bad_packet(_Pid,_Reason) -> ok. %%gen_server:cast(Pid,{bad_packet,Reason}).
 
 handle_packet(Pid,Packet) ->
-  gen_server:cast(Pid,{packet,Packet}).
+  gen_server:call(Pid,{packet,Packet}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -84,8 +83,7 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   link(ReceiverPid),
   TimeOut = proplists:get_value(conn_timeout,Opts,10000),
   erlang:send_after(TimeOut,self(),conn_timeout),
-  {ok, #state{receiver_pid = ReceiverPid,
-              sup_pid = SupPid,
+  {ok, #state{sup_pid = SupPid,
               connected = false,
               transport_info = TSO}
   }.
@@ -105,6 +103,25 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
+handle_call({packet,Packet = #'CONNECT'{}},_From,S = #state{connected = false,
+                                                            sup_pid = SupPid,
+                                                            transport_info = TSO}) ->
+  %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
+  {_,_,Opts} = TSO,
+  {Address,Port} = iotlb_broker_selection:select_broker(Packet),
+  {ok,BrokerSocket} = connect_to_broker(Address,Port,Opts),
+  {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid,TSO,BrokerSocket),
+  ok = gen_tcp:controlling_process(BrokerSocket,BrokerForwarder),
+  S1 = S#state{socket = BrokerSocket,connected = true},
+  forward_to_broker(Packet,S1);
+
+handle_call({packet,_Packet},_From,S = #state{connected = false}) ->
+  {stop, premature_packet, S}; %%Maybe specify a different reason
+
+handle_call({packet,Packet},_From,S = #state{connected = true}) ->
+  forward_to_broker(Packet,S);
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
@@ -119,23 +136,6 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
-
-handle_cast({packet,Packet = #'CONNECT'{}},S = #state{connected = false,
-                                                      sup_pid = SupPid,
-                                                      transport_info = TSO}) ->
-
-  %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
-  BrokerSpec = iotlb_broker_selection:select_broker(Packet),
-  {ok,Sender} = iotlb_conn_sup:start_bidirectional_sender(SupPid,TSO,BrokerSpec),
-  iotlb_bsender:forward_to_server(Sender,Packet),
-  {noreply, S#state{sender_pid = Sender,connected = true}};
-
-handle_cast({packet,_Packet},S = #state{connected = false}) ->
-  {stop, premature_packet, S}; %%Maybe specify a different reason
-
-handle_cast({packet,Packet},S = #state{connected = true,sender_pid = Sender}) ->
-  iotlb_bsender:forward_to_server(Sender,Packet),
-  {noreply, S};
 
 handle_cast(_Request, State) ->
   {noreply, State}.
@@ -174,7 +174,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{socket = Sender}) ->
   ok.
 
 %%--------------------------------------------------------------------
@@ -194,3 +194,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+connect_to_broker(Address,Port,Opts)->
+  ConnTimeOut = proplists:get_value(server_connect_timeout,Opts,10000),
+  gen_tcp:connect(Address,Port,[binary, {active,true}],ConnTimeOut).
+
+forward_to_broker(Packet,S = #state{socket = BrokerSender}) ->
+  Binary = mqttl_builder:build_packet(Packet),
+  error_logger:info_msg("Sending to broker Packet ~p with Binary ~p~n",[Packet,Binary]),
+  case gen_tcp:send(BrokerSender,Binary)of
+    ok ->
+      {reply,ok,S};
+    {error, _Reason} ->
+      {stop, unable_to_send, {error,_Reason}, S}
+  end.

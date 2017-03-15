@@ -12,17 +12,17 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_bidirectional_sender/3, start_connection/3]).
+-export([start_link/0, start_bsender/3, start_connection/3]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
 
--define(SENDER_SPEC(TSO,BrokerSpec),
+-define(SENDER_SPEC(TSO,BrokerSocket),
   {
     sender,
-    {iotlb_bsender, start_link, [TSO,BrokerSpec]},
+    {iotlb_bsender, start_link, [TSO,BrokerSocket]},
     permanent,          % cannot recover from a lost connection
     2000,               % should be more than sufficient
     worker,             % as opposed to supervisor
@@ -59,8 +59,8 @@ start_link() ->
 start_connection(SupPid,ReceiverPid,TSO) ->
   supervisor:start_child(SupPid,?CONN_SPEC(ReceiverPid,SupPid,TSO)).
 
-start_bidirectional_sender(SupPid,TSO,BrokerSpec) ->
-  supervisor:start_child(SupPid,?SENDER_SPEC(TSO,BrokerSpec)).
+start_bsender(SupPid,TSO,BrokerSocket) ->
+  supervisor:start_child(SupPid,?SENDER_SPEC(TSO,BrokerSocket)).
 
 %%%===================================================================
 %%% Supervisor callbacks
