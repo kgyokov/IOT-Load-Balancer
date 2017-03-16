@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, forward_to_server/2]).
+-export([start_link/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -40,9 +40,6 @@
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link({Transport,ClientSocket,Opts},BrokerSocket) ->
   gen_server:start_link(?MODULE, [Transport,ClientSocket,Opts,BrokerSocket], []).
-
-forward_to_server(Pid,Packet) ->
-  gen_server:call(Pid,{to_broker,Packet}).
 
 %%%%@todo: Bi-directional packet inspection
 %%forward_to_client(Pid,Binary) ->

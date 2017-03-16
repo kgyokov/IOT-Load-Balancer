@@ -174,7 +174,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
-terminate(_Reason, #state{socket = Sender}) ->
+terminate(_Reason, _S) ->
   ok.
 
 %%--------------------------------------------------------------------
