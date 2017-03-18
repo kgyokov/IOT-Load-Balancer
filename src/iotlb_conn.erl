@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3, new/3, unexpected_disconnect/2, bad_packet/2, handle_packet/2]).
+-export([start_link/3, new_link/3, unexpected_disconnect/2, bad_packet/2, handle_packet/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -48,7 +48,7 @@ start_link(ReceiverPid,SupPid,TSO) ->
   gen_server:start_link(?MODULE, [ReceiverPid,SupPid,TSO], []).
 
 
-new(Transport,Socket,Opts) ->
+new_link(Transport,Socket,Opts) ->
   TSO = {Transport,Socket,Opts},
   iotlb_conn_sup_sup:start_connection(self(),TSO).
 
@@ -81,7 +81,7 @@ handle_packet(Pid,Packet) ->
   {stop, Reason :: term()} | ignore).
 init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   link(ReceiverPid),
-  TimeOut = proplists:get_value(conn_timeout,Opts,10000),
+  TimeOut = maps:get(conn_timeout,Opts,10000),
   erlang:send_after(TimeOut,self(),conn_timeout),
   {ok, #state{sup_pid = SupPid,
               connected = false,
@@ -196,7 +196,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 connect_to_broker(Address,Port,Opts)->
-  ConnTimeOut = proplists:get_value(server_connect_timeout,Opts,10000),
+  ConnTimeOut = maps:get(server_connect_timeout,Opts,10000),
   gen_tcp:connect(Address,Port,[binary, {active,true}],ConnTimeOut).
 
 forward_to_broker(Packet,S = #state{socket = BrokerSender}) ->
