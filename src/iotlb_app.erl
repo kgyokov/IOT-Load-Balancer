@@ -24,8 +24,8 @@ start(_StartType, _StartArgs) ->
     ProtOpts = [
         {shutdown,5000}
     ],
-
-    {ok,_} = mqttl_sup:start_listener(tcp,TransOpts,iotlb_conn,ProtOpts),
+    ConnOpts = #{},
+    {ok,_} = mqttl_sup:start_listener(tcp,TransOpts,iotlb_conn,ConnOpts,ProtOpts),
     iotlb_sup:start_link().
 
 stop(_State) ->
