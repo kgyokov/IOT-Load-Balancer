@@ -12,20 +12,25 @@
 start() -> application:ensure_all_started(iotlb).
 
 start(_StartType, _StartArgs) ->
-    TransOpts = [
-        {port,1883}
-    ],
-    _SslTransOpts = [
-        {port,5556},
-        {certfile, ""},
-        {cacertfile, ""},
-        {verify, verify_peer}
-    ],
     ProtOpts = [
         {shutdown,5000}
     ],
     ConnOpts = #{},
-    {ok,_} = mqttl_sup:start_listener(tcp,TransOpts,iotlb_conn,ConnOpts,ProtOpts),
+    TransportOpts =[
+        {tcp,[
+            {port,1883}
+        ]},
+%%        {ssl,[
+%%            {port,5556},
+%%            {certfile, ""},
+%%            {cacertfile, ""},
+%%            {verify, verify_peer}
+%%        ]},
+        {http,[
+            {port, 80}
+        ]}
+    ],
+    [{ok,_} = mqttl_sup:start_listener(T,Opts,iotlb_conn,ConnOpts,ProtOpts) || {T,Opts} <- TransportOpts],
     iotlb_sup:start_link().
 
 stop(_State) ->
