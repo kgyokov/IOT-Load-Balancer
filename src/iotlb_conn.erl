@@ -106,12 +106,12 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
 
 handle_call({packet,Packet = #'CONNECT'{}},_From,S = #state{connected = false,
                                                             sup_pid = SupPid,
-                                                            transport_info = TSO}) ->
+                                                            transport_info = TRO}) ->
   %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
-  {_,_,Opts} = TSO,
+  {_,_,Opts} = TRO,
   {Address,Port} = iotlb_broker_selection:select_broker(Packet),
   {ok,BrokerSocket} = connect_to_broker(Address,Port,Opts),
-  {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid,TSO,BrokerSocket),
+  {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid, TRO,BrokerSocket),
   ok = gen_tcp:controlling_process(BrokerSocket,BrokerForwarder),
   S1 = S#state{socket = BrokerSocket,connected = true},
   forward_to_broker(Packet,S1);

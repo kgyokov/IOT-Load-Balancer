@@ -24,7 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {transport,client_socket,broker_socket,opts}).
+-record(state, {transport, transport_ref,broker_socket,opts}).
 
 %%%===================================================================
 %%% API
@@ -36,10 +36,10 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link({Transport::any(),Socket::any(),Opts::[any()]},BrokerSpec::any()) ->
+-spec(start_link({Transport::any(),TRef ::any(),Opts::[any()]},BrokerSpec::any()) ->
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link({Transport,ClientSocket,Opts},BrokerSocket) ->
-  gen_server:start_link(?MODULE, [Transport,ClientSocket,Opts,BrokerSocket], []).
+start_link({Transport,TRef,Opts},BrokerSocket) ->
+  gen_server:start_link(?MODULE, [Transport,TRef,Opts,BrokerSocket], []).
 
 %%%%@todo: Bi-directional packet inspection
 %%forward_to_client(Pid,Binary) ->
@@ -63,9 +63,9 @@ start_link({Transport,ClientSocket,Opts},BrokerSocket) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([Transport,ClientSocket,Opts,BrokerSocket]) ->
+init([Transport,TRef,Opts,BrokerSocket]) ->
   {ok, #state{transport = Transport,
-              client_socket = ClientSocket,
+              transport_ref = TRef,
               broker_socket = BrokerSocket,
               opts = Opts}}.
 
@@ -117,10 +117,10 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_info({tcp,_,Binary},S = #state{client_socket = ClientSocket,
+handle_info({tcp,_,Binary},S = #state{transport_ref = TRef,
                                       transport = Transport}) ->
   error_logger:info_msg("Sending back binary ~p~n",[Binary]),
-  Transport:send(ClientSocket,Binary),
+  Transport:send(TRef,Binary),
   {noreply,S};
 
 handle_info({tcp_closed, _Socket},S) ->
