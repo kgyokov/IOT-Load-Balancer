@@ -109,7 +109,7 @@ handle_call({packet,Packet = #'CONNECT'{}},_From,S = #state{connected = false,
                                                             transport_info = TSO}) ->
   %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
   {_,_,Opts} = TSO,
-  {Address,Port} = iotlb_broker_selection:select_broker(Packet),
+  {Address,Port} = iotlb_broker_hash_sel:select(Packet),
   {ok,BrokerSocket} = connect_to_broker(Address,Port,Opts),
   {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid,TSO,BrokerSocket),
   ok = gen_tcp:controlling_process(BrokerSocket,BrokerForwarder),
