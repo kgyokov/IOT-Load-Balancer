@@ -27,6 +27,7 @@
 
 -record(state, {
   transport_info ::any(),
+  auth ::module(),
   connected::boolean(),
   sup_pid :: pid(),
   socket :: pid()                 %% The process sending to the actual device
@@ -83,7 +84,9 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   link(ReceiverPid),
   TimeOut = maps:get(conn_timeout,Opts,10000),
   erlang:send_after(TimeOut,self(),conn_timeout),
+  Auth = maps:get(auth,Opts,mqttl_auth_default),
   {ok, #state{sup_pid = SupPid,
+              auth = Auth,
               connected = false,
               transport_info = TSO}
   }.
@@ -109,6 +112,7 @@ handle_call({packet,Packet = #'CONNECT'{}},_From,S = #state{connected = false,
                                                             transport_info = TSO}) ->
   %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
   {_,_,Opts} = TSO,
+  %% @todo: Authentication
   {Address,Port} = iotlb_broker_selection:select_broker(Packet),
   {ok,BrokerSocket} = connect_to_broker(Address,Port,Opts),
   {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid,TSO,BrokerSocket),
@@ -119,11 +123,20 @@ handle_call({packet,Packet = #'CONNECT'{}},_From,S = #state{connected = false,
 handle_call({packet,_Packet},_From,S = #state{connected = false}) ->
   {stop, premature_packet, S}; %%Maybe specify a different reason
 
-handle_call({packet,Packet},_From,S = #state{connected = true}) ->
+
+handle_call({packet,Packet = #'SUBSCRIBE'{subscriptions = Subs}},_From,S = #state{auth = Auth}) ->
+  %% @todo: Authroization
+  forward_to_broker(Packet,S);
+
+handle_call({packet,Packet = #'PUBLISH'{topic = Topic,qos = QoS}},_From,S) ->
+  %% @todo: Authroization
+  forward_to_broker(Packet,S);
+
+handle_call({packet,Packet},_From,S) ->
   forward_to_broker(Packet,S);
 
 handle_call(_Request, _From, State) ->
-  {reply, ok, State}.
+  {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
