@@ -23,5 +23,9 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(iotlb_conn_sup_sup,supervisor)]} }.
+    ChildSpec = [
+        ?CHILD(iotlb_stats_col,worker),
+        ?CHILD(iotlb_conn_sup_sup,supervisor)
+    ],
+    {ok, { {rest_for_one, 5, 10}, ChildSpec} }.
 

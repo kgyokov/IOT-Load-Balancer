@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_stats/0]).
+-export([start_link/0, get_stats/0, get_all_stats/0, connected/3]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -34,8 +34,16 @@
 %%% API
 %%%===================================================================
 
+connected(Pid,ClientId,Broker) ->
+  gen_server:cast(?SERVER,{connected,Pid,ClientId,Broker}).
+
 get_stats() ->
   gen_server:call(?SERVER,get_stats).
+
+get_all_stats() -> get_all_stats(5000).
+
+get_all_stats(Timeout) ->
+  gen_server:multi_call(nodes(),?SERVER,get_stats,Timeout).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -67,6 +75,7 @@ start_link() ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
 init([]) ->
+  ets:new(?TABLE,[set,named_table]),
   {ok, #state{stats = iotlb_stats:new()}}.
 
 %%--------------------------------------------------------------------
@@ -156,7 +165,7 @@ handle_info(_Info, State) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
 terminate(_Reason, _State) ->
-  ok.
+  ets:delete(?TABLE).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,5 +184,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-update_stats(Fun,S = #state{stats = Stats}) ->
-  S#state{stats = Fun(Stats)}.

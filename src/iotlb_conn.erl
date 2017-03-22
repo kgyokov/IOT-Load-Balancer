@@ -104,9 +104,10 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_call({packet,Packet = #'CONNECT'{}},_From,S = #state{connected = false,
-                                                            sup_pid = SupPid,
-                                                            transport_info = TRO}) ->
+handle_call({packet,Packet = #'CONNECT'{client_id = ClientId}},_From,
+              S = #state{connected = false,
+                         sup_pid = SupPid,
+                         transport_info = TRO}) ->
   %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
   {_,_,Opts} = TRO,
   {Address,Port} = iotlb_broker_selection:select_broker(Packet),
@@ -114,6 +115,7 @@ handle_call({packet,Packet = #'CONNECT'{}},_From,S = #state{connected = false,
   {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid, TRO,BrokerSocket),
   ok = gen_tcp:controlling_process(BrokerSocket,BrokerForwarder),
   S1 = S#state{socket = BrokerSocket,connected = true},
+  iotlb_stats_col:connected(self(),ClientId,{Address,Port}),
   forward_to_broker(Packet,S1);
 
 handle_call({packet,_Packet},_From,S = #state{connected = false}) ->
