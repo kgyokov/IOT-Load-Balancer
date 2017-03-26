@@ -14,6 +14,8 @@
 %% API
 -export([start_link/0, get_stats/0, get_all_stats/0, connected/3]).
 
+-export_type([stats/0,broker_stats/0]).
+
 %% gen_server callbacks
 -export([init/1,
   handle_call/3,
@@ -26,6 +28,11 @@
 
 -define(TABLE, ?MODULE).
 
+%%@todo: replace with broker() type from other branch
+-type stats() :: non_neg_integer().
+-type broker_stats()::{any(),stats()}.
+-type node_broker_stats()::{node(),[broker_stats()]}.
+
 -record(state, {
   stats
 }).
@@ -37,11 +44,14 @@
 connected(Pid,ClientId,Broker) ->
   gen_server:cast(?SERVER,{connected,Pid,ClientId,Broker}).
 
+-spec get_stats() -> broker_stats().
 get_stats() ->
   gen_server:call(?SERVER,get_stats).
 
+-spec get_all_stats() -> [node_broker_stats()].
 get_all_stats() -> get_all_stats(5000).
 
+-spec get_all_stats(Timeout::non_neg_integer()) -> [node_broker_stats()].
 get_all_stats(Timeout) ->
   gen_server:multi_call(nodes(),?SERVER,get_stats,Timeout).
 
