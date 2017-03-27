@@ -1,16 +1,21 @@
 module Gauge where
   
 import Prelude
-import Data.List
 import Data.Maybe
+import Data.Monoid
 import Data.Functor
 import Control.Monad.Eff.Exception
+import Data.List as L
+import Data.Map as Map
+import Control.Bind ((=<<))
+import Data.Eq (Eq)
+import Data.Foldable (sum)
+import Data.List (concatMap)
+import Data.Map (Map, alter, fromFoldable, update)
+
 import Pux.Html as H
 import Pux.Html.Attributes as A
 import Pux.Html.Events as E
-import Control.Bind ((=<<))
-import Data.Foldable (sum)
-import Data.Eq (Eq)
 
 import React.DOM.Props (onChange)
 
@@ -35,41 +40,7 @@ type BrokerStats =
 
 type NodeStats =  
     { node ::  Node
-    , timedSeries:: List (TimedVal (List BrokerStats))}
-
-instance viewTypeShow :: Show ViewType where
-  show PerNode = "PerNode"
-  show PerBroker = "PerBroker"
-  show PerNodeAndBroker = "PerNodeAndBroker"
-  show Aggregate = "Aggregate"
-
-numConnections :: List NodeStats -> Int
-numConnections = 
-    concatMap latestStatsPerBroker
-    >>> map _.connections
-    >>> sum
-
--- numConnections :: List BrokerStats -> Int 
--- numConnections = 
---     map _.connections >>> sum
-
-latestStatsPerBroker :: NodeStats -> List BrokerStats
-latestStatsPerBroker = 
-     _.timedSeries 
-        >>> head 
-        >>> map _.value
-        >>> emptyIfNothing
-
-
--- latestStatsPerBroker :: List(NodeStats) -> List BrokerStats
--- latestStatsPerBroker = 
---     map latestStatsPerBroker
---     >>> group _.broker
---     >>> {broker : b, connections : }
-
-emptyIfNothing :: forall a. Maybe (List a) -> List a
-emptyIfNothing (Just x) = x
-emptyIfNothing Nothing = Nil
+    , brokers:: List BrokerStats}
 
 init :: State
 init = { viewType : PerBroker, stats : Nil }
@@ -80,22 +51,53 @@ update (ChangeView vt) s = s {viewType = vt}
 
 view:: State -> H.Html Action
 view {viewType,stats} =
-    H.div
-    []
-    [ H.h1 [] [numConnectionsView stats]
-    , select viewType 
-    , stats # viewAs viewType
-    ]
+    H.div []
+        [ H.h1 [] [numConnectionsView stats]
+        , select viewType 
+        , stats # viewAs viewType ]
 
 numConnectionsView :: (List NodeStats) -> H.Html Action
 numConnectionsView stats = 
     H.text $ stats # show <<< numConnections
 
-viewAs :: ViewType ->  (List NodeStats) -> H.Html Action
-viewAs PerNode s = H.div [] []
-viewAs PerBroker s = H.div [] []
-viewAs PerNodeAndBroker s = H.div [] []
-viewAs Aggregate s = H.div [] []
+viewAs :: ViewType -> (List NodeStats) -> H.Html Action
+viewAs PerNode s = 
+    H.div [] 
+    s # map \{node,brokers} ->
+        let agg = brokers # map _.connections # sum in
+        H.div [] 
+            [ H.h1  [] [text $ show node]
+            , viewStats agg ]
+
+viewAs PerBroker s =
+    let mergeBrokerStats {broker, connections} = addOrInsert broker connections
+        statsPerBroker = s # concatMap _.brokers 
+                            >>> foldl mergeBrokerStats Map.empty
+                            >>> Map.toAscUnfoldable
+    in
+    H.div []
+    statsPerBroker
+    # map \(Tuple broker agg) ->
+         H.div [] 
+            [ H.h1  [] [text $ show broker]
+            , viewStats agg]
+
+viewAs PerNodeAndBroker s = 
+    H.div []
+    []
+
+viewAs Aggregate s = 
+    let agg = s # numConnections in
+    H.div [] 
+        [ H.h1  [] [text "Aggregate Stats"]
+        , viewStats agg]
+
+
+viewStats :: BStats -> H.Html Action
+viewStats stats = 
+    H.div [] 
+        [ H.h2 [] [text "Connections:"]
+        , H.p  [] [text  stats] ]
 
 select :: ViewType -> H.Html Action
 select viewType = 
@@ -125,3 +127,41 @@ toViewType "PerBroker" = PerBroker
 toViewType "PerNodeAndBroker" = PerNodeAndBroker
 toViewType "Aggregate" = Aggregate
 toViewType _ = Aggregate
+
+
+instance viewTypeShow :: Show ViewType where
+  show PerNode = "PerNode"
+  show PerBroker = "PerBroker"
+  show PerNodeAndBroker = "PerNodeAndBroker"
+  show Aggregate = "Aggregate"
+
+numConnections :: List NodeStats -> Int
+numConnections = 
+    concatMap _.brokers
+    >>> map _.connections
+    >>> sum
+
+-- latestStatsPerBroker :: NodeStats -> List BrokerStats
+-- latestStatsPerBroker = 
+--      _.timedSeries 
+--         >>> head 
+--         >>> map _.value
+--         >>> emptyIfNothing
+
+-- latestStatsPerBroker :: NodeStats -> List BrokerStats
+-- latestStatsPerBroker = 
+--      _.timedSeries 
+--         >>> head 
+--         >>> map _.value
+--         >>> emptyIfNothing
+
+upsert :: forall k v. Monoid v => (v -> v) -> k -> Map k v -> Map k v
+upsert f = Map.alter (emptyIfNothing >>> f >>> Just)
+
+addOrInsert :: forall k v. Monoid v => v -> k -> Map k v -> Map k v
+addOrInsert v = upsert $ (<#>) v
+
+emptyIfNothing :: forall f. Monoid f => Maybe f -> f
+emptyIfNothing (Just fa) = fa
+emptyIfNothing Nothing = mempty
+
