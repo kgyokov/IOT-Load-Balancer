@@ -1,19 +1,21 @@
 module Gauge where
   
 import Prelude
+import Control.Bind ((=<<))
+import Control.Monad.Eff.Exception
 import Data.Maybe
 import Data.Monoid
 import Data.Functor
-import Control.Monad.Eff.Exception
 import Data.List as L
 import Data.Map as Map
-import Control.Bind ((=<<))
 import Data.Eq (Eq)
 import Data.Foldable (sum)
 import Data.List (concatMap)
 import Data.Map (Map, alter, fromFoldable, update)
 
+import Pux.Html.Events (onClick)
 import Pux.Html as H
+import Pux.CSS as CSS
 import Pux.Html.Attributes as A
 import Pux.Html.Events as E
 
@@ -29,11 +31,12 @@ type State =
     , stats:: List NodeStats }
 
 -- /todo: Add Node = String | IPAddress
+type BStats = Int
 type Node = String
+
 type Broker = 
     { name :: Node
     , port :: Int }
-type BStats = Int
 type BrokerStats = 
     { broker ::Broker
     , connections :: BStats}
@@ -84,7 +87,10 @@ viewAs PerBroker s =
 
 viewAs PerNodeAndBroker s = 
     H.div []
-    []
+    s # concatMap \{node,brokers} -> brokers # map {node,brokerStats}
+    >>> map \{node,brokerStats} ->
+        [ H.h1  [] [text $ "Node: " <> node <> " Broker: " <> show brokerStats.broker]
+            , viewStats brokerStats.connections]
 
 viewAs Aggregate s = 
     let agg = s # numConnections in
@@ -97,42 +103,29 @@ viewStats :: BStats -> H.Html Action
 viewStats stats = 
     H.div [] 
         [ H.h2 [] [text "Connections:"]
-        , H.p  [] [text  stats] ]
+        , H.p  [] [text $ show stats] ]
 
 select :: ViewType -> H.Html Action
 select viewType = 
-    H.select
-     [E.onSelect changeView]
-     (optionView <$> availableViews)
+    H.ul []
+     (optionView viewType <$> availableViews)
 
 optionView :: ViewType -> ViewType -> H.Html Action
-optionView v sel =
-    let strVal = viewTypeToStr v in
-    H.option [A.value strVal, A.selected (v == sel) ] [H.text strVal]
-
-changeView :: E.SelectionEvent -> Action
-changeView se = 
-    ChangeView (toViewType se.target.value)
+optionView sel v =
+    H.li 
+        if v == sel 
+        then [CSS.style ""]
+        else [E.onClick $ const (ChangeView v)]
+        [H.text $ show v]
 
 availableViews :: Array ViewType
 availableViews =
    [PerNode, PerBroker, PerNodeAndBroker, Aggregate]
 
-viewTypeToStr:: ViewType -> String
-viewTypeToStr = show
-
-toViewType :: String -> ViewType
-toViewType "PerNode" = PerNode
-toViewType "PerBroker" = PerBroker
-toViewType "PerNodeAndBroker" = PerNodeAndBroker
-toViewType "Aggregate" = Aggregate
-toViewType _ = Aggregate
-
-
 instance viewTypeShow :: Show ViewType where
-  show PerNode = "PerNode"
-  show PerBroker = "PerBroker"
-  show PerNodeAndBroker = "PerNodeAndBroker"
+  show PerNode = "Per Node"
+  show PerBroker = "Per Broker"
+  show PerNodeAndBroker = "Per Node And Broker"
   show Aggregate = "Aggregate"
 
 numConnections :: List NodeStats -> Int
@@ -140,20 +133,6 @@ numConnections =
     concatMap _.brokers
     >>> map _.connections
     >>> sum
-
--- latestStatsPerBroker :: NodeStats -> List BrokerStats
--- latestStatsPerBroker = 
---      _.timedSeries 
---         >>> head 
---         >>> map _.value
---         >>> emptyIfNothing
-
--- latestStatsPerBroker :: NodeStats -> List BrokerStats
--- latestStatsPerBroker = 
---      _.timedSeries 
---         >>> head 
---         >>> map _.value
---         >>> emptyIfNothing
 
 upsert :: forall k v. Monoid v => (v -> v) -> k -> Map k v -> Map k v
 upsert f = Map.alter (emptyIfNothing >>> f >>> Just)
