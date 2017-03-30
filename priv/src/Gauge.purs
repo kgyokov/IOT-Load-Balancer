@@ -122,24 +122,22 @@ viewStats stats =
 
 select :: ViewType -> H.Html Action
 select viewType = 
-    H.ul []
-     (optionView viewType <$> availableViews)
+    H.ul [] $
+     optionView viewType <$> availableViews
 
 optionView :: ViewType -> ViewType -> H.Html Action
 optionView sel v =
-    H.li 
-        (if v == sel then [] else [E.onClick $ const (ChangeView v)])
+    H.li
+        (if v == sel then [style selectedStyle] else [onClick $ const (ChangeView v)])
         [H.text $ show v]
+
+selectedStyle :: Array (Tuple String String)
+selectedStyle = 
+    [Tuple "color" "red"]
 
 availableViews :: Array ViewType
 availableViews =
    [PerNode, PerBroker, PerNodeAndBroker, Aggregate]
-
-instance viewTypeShow :: Show ViewType where
-  show PerNode = "Per Node"
-  show PerBroker = "Per Broker"
-  show PerNodeAndBroker = "Per Node And Broker"
-  show Aggregate = "Aggregate"
 
 numConnections :: Array NodeStats -> BStats
 numConnections = 
@@ -147,15 +145,14 @@ numConnections =
     >>> map _.connections
     >>> fold
 
-upsert :: forall k v. (Monoid v, Ord k) => (v -> v) -> k -> Map k v -> Map k v
-upsert f = Map.alter (emptyIfNothing >>> f >>> Just)
-
-updateJust f = emptyIfNothing >>> f >>> Just
+mapWithDefault :: forall a b. (Monoid a) => (a -> b) -> Maybe a -> Maybe b
+mapWithDefault f =  emptyIfNothing >>> (<$>) f
 
 addOrInsert :: forall k v. (Monoid v, Ord k) => v -> k -> Map k v -> Map k v
-addOrInsert v = upsert $ (<>) v
+addOrInsert = Map.alter <<< mapWithDefault <<< (<>)
 
-emptyIfNothing :: forall f. Monoid f => Maybe f -> f
-emptyIfNothing (Just fa) = fa
-emptyIfNothing Nothing = mempty
+emptyIfNothing :: forall f. Monoid f => Maybe f -> Maybe f
+emptyIfNothing Nothing = Just mempty
+emptyIfNothing ja = ja
+
 
