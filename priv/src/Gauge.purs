@@ -2,21 +2,27 @@ module Gauge where
   
 import Prelude
 import Data.Maybe
-import Data.Monoid (class Monoid, mempty)
 import Data.Array
-import Data.Tuple (Tuple(..))
-import Data.Time (Time)
 import Data.Map as Map
+import CSS (background)
 import Data.Map (Map)
+import Data.Monoid (class Monoid, mempty)
+import Data.Time (Time)
+import Data.Tuple (Tuple(..))
 
 import Pux.Html.Events (onClick)
+import Pux.Html.Attributes (style)
 import Pux.Html as H
---import Pux.CSS as CSS
-import Pux.Html.Events as E
 
 data ViewType = PerNode | PerBroker | PerNodeAndBroker | Aggregate
 
 derive instance viewTypeEq :: Eq ViewType
+
+instance viewTypeShow :: Show ViewType where
+  show PerNode = "Per Node"
+  show PerBroker = "Per Broker"
+  show PerNodeAndBroker = "Per Node And Broker"
+  show Aggregate = "Aggregate"
 
 data Action = UpdateStats (Array NodeStats) | ChangeView ViewType
 
@@ -27,6 +33,7 @@ type State =
 
 -- /todo: Add Node = String | IPAddress
 newtype BStats = BStats Int
+
 instance bstatsSemigroup :: Semigroup BStats where
     append (BStats b1) (BStats b2 ) = BStats (b1 + b2)
 instance bstatsMonoid :: Monoid BStats where
@@ -43,8 +50,6 @@ derive instance brokerOrd :: Ord Broker
 
 instance brokerShow :: Show Broker where
     show (Broker {name,port}) = show name <> ":" <> show port
--- instance brokerOrd :: Ord Broker where
---     compare (Broker {name:n1, port:p1}) (Broker {name:n2, port:p2}) = (compare n1 n2) <> (compare p1 p2)
 
 type BrokerStats = 
     { broker ::Broker
@@ -83,9 +88,9 @@ viewAs PerNode s =
 
 viewAs PerBroker s =
     let 
-        mergeBrokerStats m {broker, connections} = addOrInsert connections broker m
+        mergeBrokerStats {broker, connections} = addOrInsert connections broker
         statsPerBroker = s # concatMap _.brokers 
-                           >>> foldl mergeBrokerStats Map.empty
+                           >>> foldr mergeBrokerStats Map.empty
                            >>> Map.toAscUnfoldable
     in
     H.div []
@@ -99,7 +104,7 @@ viewAs PerNodeAndBroker s =
     s # concatMap (\{node,brokers} -> brokers # map \brokerStats -> {node,brokerStats})
     >>> (map \{node,brokerStats} ->
         H.div []
-        [ H.h1  [] [H.text $ "Node: " <> node <> " Broker: " <> show brokerStats.broker]
+        [ H.h1  [] [H.text $ "Node: " <> show node <> " Broker: " <> show brokerStats.broker]
             , viewStats brokerStats.connections])
 
 viewAs Aggregate s = 
