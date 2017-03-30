@@ -1,16 +1,15 @@
 {
-  "name": "priv",
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components",
-    "output"
+  "name": "iotlb-web-ui",
+  "homepage": "https://github.com/kgyokov/IOT-Load-Balancer",
+  "authors": [
+    "Kalin Gyokov"
   ],
+  "description": "Web UI for the IOTLB Erlang application.",
+  "main": "support/index.js",
+  "license": "MIT",
   "dependencies": {
-    "purescript-prelude": "^3.0.0",
-    "purescript-console": "^3.0.0"
-  },
-  "devDependencies": {
-    "purescript-psci-support": "^3.0.0"
+    "purescript-pux": "^7.0.0",
+    "purescript-pux-devtool": "^4.1.0",
+    "purescript-websocket-simple": "^1.0.1"
   }
 }
