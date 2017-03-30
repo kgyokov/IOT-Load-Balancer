@@ -1,10 +1,9 @@
-module Gauge where
+module App.Gauge where
   
 import Prelude
 import Data.Maybe
 import Data.Array
 import Data.Map as Map
-import CSS (background)
 import Data.Map (Map)
 import Data.Monoid (class Monoid, mempty)
 import Data.Time (Time)
@@ -53,7 +52,7 @@ instance brokerShow :: Show Broker where
 
 type BrokerStats = 
     { broker ::Broker
-    , connections :: BStats}
+    , stats :: BStats}
 
 type NodeStats =  
     { node ::  Node
@@ -70,7 +69,7 @@ view:: State -> H.Html Action
 view {viewType,stats} =
     H.div []
         [ H.h1 [] [numConnectionsView stats]
-        , select viewType 
+        , selectView viewType 
         , stats # viewAs viewType ]
 
 numConnectionsView :: (Array NodeStats) -> H.Html Action
@@ -81,14 +80,14 @@ viewAs :: ViewType -> (Array NodeStats) -> H.Html Action
 viewAs PerNode s = 
     H.div []
     (s # map \{node,brokers} ->
-        let agg = brokers # map _.connections >>> fold in
+        let agg = brokers # map _.stats >>> fold in
         H.div [] 
             [ H.h1  [] [H.text $ show node]
             , viewStats agg ])
 
 viewAs PerBroker s =
     let 
-        mergeBrokerStats {broker, connections} = addOrInsert connections broker
+        mergeBrokerStats {broker, stats} = addOrInsert stats broker
         statsPerBroker = s # concatMap _.brokers 
                            >>> foldr mergeBrokerStats Map.empty
                            >>> Map.toAscUnfoldable
@@ -97,15 +96,17 @@ viewAs PerBroker s =
     (statsPerBroker # map \(Tuple broker agg) ->
          H.div [] 
             [ H.h1  [] [H.text $ show broker]
-            , viewStats agg])
+            , viewStats agg]
+    )
 
 viewAs PerNodeAndBroker s = 
     H.div [] $
     s # concatMap (\{node,brokers} -> brokers # map \brokerStats -> {node,brokerStats})
     >>> (map \{node,brokerStats} ->
-        H.div []
-        [ H.h1  [] [H.text $ "Node: " <> show node <> " Broker: " <> show brokerStats.broker]
-            , viewStats brokerStats.connections])
+                H.div []
+                [ H.h1  [] [H.text $ "Node: " <> show node <> " Broker: " <> show brokerStats.broker]
+                    , viewStats brokerStats.stats
+        ])
 
 viewAs Aggregate s = 
     let agg = numConnections s in
@@ -120,8 +121,8 @@ viewStats stats =
         [ H.h2 [] [H.text "Connections:"]
         , H.p  [] [H.text $ show stats] ]
 
-select :: ViewType -> H.Html Action
-select viewType = 
+selectView :: ViewType -> H.Html Action
+selectView viewType = 
     H.ul [] $
      optionView viewType <$> availableViews
 
@@ -142,7 +143,7 @@ availableViews =
 numConnections :: Array NodeStats -> BStats
 numConnections = 
     concatMap _.brokers
-    >>> map _.connections
+    >>> map _.stats
     >>> fold
 
 mapWithDefault :: forall a b. (Monoid a) => (a -> b) -> Maybe a -> Maybe b
