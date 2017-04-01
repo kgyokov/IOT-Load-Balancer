@@ -8,7 +8,6 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Var (($=), get)
-import App.Gauge as Gauge
 
 import WebSocket (Connection(..), Message(..), URL(..), runMessageEvent, runMessage, runURL, newWebSocket, WEBSOCKET)
 

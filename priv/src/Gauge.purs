@@ -6,8 +6,8 @@ import Data.Array
 import Data.Map as Map
 import Data.Map (Map)
 import Data.Monoid (class Monoid, mempty)
-import Data.Time (Time)
 import Data.Tuple (Tuple(..))
+import App.StatsTypes
 
 import Pux.Html.Events (onClick)
 import Pux.Html.Attributes (style)
@@ -18,28 +18,9 @@ data Action = UpdateStats LBStats | ChangeView ViewType
 
 data ViewType = PerNode | PerBroker | PerNodeAndBroker | Aggregate
 
-type LBStats = Array NodeStats
-
-type TimedVal a = { time::Time, value::a }
 type State = 
     { viewType:: ViewType
     , stats:: LBStats }
-
--- /todo: Add Node = String | IPAddress
-newtype BStats = BStats Int
-
-type Node = String
-
-newtype Broker = Broker { name :: Node, port :: Int }
-
-type BrokerStats = 
-    { broker :: Broker
-    , stats :: BStats}
-
-type NodeStats =  
-    { node :: Node
-    , brokers:: Array BrokerStats}
-
 
 
 derive instance viewTypeEq :: Eq ViewType
@@ -49,19 +30,6 @@ instance viewTypeShow :: Show ViewType where
   show PerBroker = "Per Broker"
   show PerNodeAndBroker = "Per Node And Broker"
   show Aggregate = "Aggregate"
-
-instance bstatsSemigroup :: Semigroup BStats where
-    append (BStats b1) (BStats b2 ) = BStats (b1 + b2)
-instance bstatsMonoid :: Monoid BStats where
-    mempty = BStats 0
-instance bstatsShow :: Show BStats where
-    show (BStats b) = show b
-
-derive instance brokerEq :: Eq Broker
-derive instance brokerOrd :: Ord Broker 
-
-instance brokerShow :: Show Broker where
-    show (Broker {name,port}) = show name <> ":" <> show port
 
 
 init :: State
