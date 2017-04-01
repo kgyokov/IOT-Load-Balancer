@@ -35,9 +35,17 @@ start_lb() ->
 
 
 start_gui() ->
+    ProcessOpts  = [],
+    Dispatch = cowboy_router:compile([
+        %% {HostMatch, list({PathMatch, Handler, Opts})}
+        {'_', [{"/stats", iotlb_gui_ws, ProcessOpts}]}
+    ]),
+    ProtOpts =
+        [{env, [{dispatch, Dispatch}]},
+         {shutdown,5000}],
     HttpOpts =[{port,12000}],
-    ProtOpts = [{shutdown,5000}],
     {ok,_} = cowboy:start_http(gui_http,10,HttpOpts,ProtOpts).
+
 
 stop(_State) ->
     ok.
