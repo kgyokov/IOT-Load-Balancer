@@ -13,7 +13,34 @@ import Pux.Html.Events (onClick)
 import Pux.Html.Attributes (style)
 import Pux.Html as H
 
+
+data Action = UpdateStats LBStats | ChangeView ViewType
+
 data ViewType = PerNode | PerBroker | PerNodeAndBroker | Aggregate
+
+type LBStats = Array NodeStats
+
+type TimedVal a = { time::Time, value::a }
+type State = 
+    { viewType:: ViewType
+    , stats:: LBStats }
+
+-- /todo: Add Node = String | IPAddress
+newtype BStats = BStats Int
+
+type Node = String
+
+newtype Broker = Broker { name :: Node, port :: Int }
+
+type BrokerStats = 
+    { broker :: Broker
+    , stats :: BStats}
+
+type NodeStats =  
+    { node :: Node
+    , brokers:: Array BrokerStats}
+
+
 
 derive instance viewTypeEq :: Eq ViewType
 
@@ -23,16 +50,6 @@ instance viewTypeShow :: Show ViewType where
   show PerNodeAndBroker = "Per Node And Broker"
   show Aggregate = "Aggregate"
 
-data Action = UpdateStats (Array NodeStats) | ChangeView ViewType
-
-type TimedVal a = { time::Time, value::a }
-type State = 
-    { viewType:: ViewType
-    , stats:: Array NodeStats }
-
--- /todo: Add Node = String | IPAddress
-newtype BStats = BStats Int
-
 instance bstatsSemigroup :: Semigroup BStats where
     append (BStats b1) (BStats b2 ) = BStats (b1 + b2)
 instance bstatsMonoid :: Monoid BStats where
@@ -40,23 +57,12 @@ instance bstatsMonoid :: Monoid BStats where
 instance bstatsShow :: Show BStats where
     show (BStats b) = show b
 
-type Node = String
-
-newtype Broker = Broker { name :: Node, port :: Int }
-
 derive instance brokerEq :: Eq Broker
 derive instance brokerOrd :: Ord Broker 
 
 instance brokerShow :: Show Broker where
     show (Broker {name,port}) = show name <> ":" <> show port
 
-type BrokerStats = 
-    { broker ::Broker
-    , stats :: BStats}
-
-type NodeStats =  
-    { node ::  Node
-    , brokers:: Array BrokerStats}
 
 init :: State
 init = { viewType : PerBroker, stats : [] }
