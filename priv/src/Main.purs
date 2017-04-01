@@ -3,6 +3,7 @@ module Main where
 import Prelude
 import Control.Bind ((=<<))
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (EXCEPTION)
 import Data.Maybe (Maybe(..))
 
 import DOM (DOM)
@@ -14,7 +15,7 @@ import Pux.Devtool (Action, start) as Pux.Devtool
 import Pux.Router (sampleUrl)
 
 import Signal ((~>))
-import Signal.Channel (channel, subscribe)
+import Signal.Channel (channel, subscribe, CHANNEL)
 
 import WebSocket(WEBSOCKET)
 
@@ -22,16 +23,16 @@ import App.Layout (Action(..), State, view, update)
 import App.Routes (match)
 import App.StatsSocket as Socket
 
-type AppEffects = (dom :: DOM)
+type AppEffects = (dom :: DOM, ws :: WEBSOCKET )
 
 -- | App configuration
-config :: forall eff. State -> Eff (dom :: DOM, ws :: WEBSOCKET | eff) (Config State Action AppEffects)
+config :: forall eff. State -> Eff (dom :: DOM, channel :: CHANNEL, err :: EXCEPTION, ws :: WEBSOCKET | eff) (Config State Action AppEffects)
 config state = do
   -- | Create a signal of URL changes.
   urlSignal <- sampleUrl
     
   -- | Create a signal for WebSocket stats data
-  wsInput <- channel Nop
+  wsInput <- channel []
   statsSig <- Socket.setupWs wsInput "ws://localhost:12000/stats"
   let wsSignal = subscribe wsInput
 
@@ -43,7 +44,7 @@ config state = do
     { initialState: state
     , update: fromSimple update
     , view: view
-    , inputs: [routeSignal, wsSignal] }
+    , inputs: [routeSignal, statsSignal] }
 
 -- | Entry point for the browser.
 main :: State -> Eff (CoreEffects AppEffects) (App State Action)

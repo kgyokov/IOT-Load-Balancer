@@ -11,7 +11,7 @@ import Control.Monad.Eff.Var (($=), get)
 import WebSocket (Connection(..), Message(..), URL(..), runMessageEvent, runMessage, runURL, newWebSocket, WEBSOCKET)
 import Data.Either
 import Data.Argonaut
-import Data.Argonaut.Parser --(decodeJson, jsonEmptyObject, (~>), (:=), (.?))
+import Data.Argonaut.Parser
 import App.StatsTypes
 
 setupWs :: forall eff. Channel LBStats -> String -> Eff (ws::WEBSOCKET, err::EXCEPTION | eff) Unit
@@ -28,9 +28,7 @@ setupWs chan url = do
     let received = (getJsonFromEvent event >>= decodeLBStats) :: (Either String LBStats)
     case received of 
       Left msg -> log $ "unknown message received: '" <> msg <> "'"
-      Right stats -> 
-        --log $ "stats received: '" <> stats <> "'"
-        send chan stats
+      Right stats -> send chan stats
     
 
   ws.onclose $= \_ -> do
