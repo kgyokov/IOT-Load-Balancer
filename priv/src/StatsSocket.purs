@@ -8,10 +8,13 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Var (($=), get)
-
 import WebSocket (Connection(..), Message(..), URL(..), runMessageEvent, runMessage, runURL, newWebSocket, WEBSOCKET)
+import Data.Either
+import Data.Argonaut
+import Data.Argonaut.Parser --(decodeJson, jsonEmptyObject, (~>), (:=), (.?))
+import App.StatsTypes
 
-setupWs :: forall eff. Channel String -> String -> Eff (ws::WEBSOCKET, err::EXCEPTION | eff) Unit
+setupWs :: forall eff. Channel LBStats -> String -> Eff (ws::WEBSOCKET, err::EXCEPTION | eff) Unit
 setupWs chan url = do
   Connection ws <- newWebSocket (URL url) []
 
@@ -22,11 +25,19 @@ setupWs chan url = do
 
   ws.onmessage $= \event -> do
     --traceAnyM event
-    let received = runMessage (runMessageEvent event)
-    send chan received
-    log $ "onmessage: Received '" <> received <> "'"
+    let received = (getJsonFromEvent event >>= decodeLBStats) :: (Either String LBStats)
+    case received of 
+      Left msg -> log $ "unknown message received: '" <> msg <> "'"
+      Right stats -> 
+        --log $ "stats received: '" <> stats <> "'"
+        send chan stats
+    
 
   ws.onclose $= \_ -> do
     --traceAnyM event
     log "onclose: Connection closed"
+
+getJsonFromEvent = 
+  runMessageEvent >>> runMessage >>> jsonParser
+
 

@@ -29,12 +29,13 @@ config :: forall eff. State -> Eff (dom :: DOM, ws :: WEBSOCKET | eff) (Config S
 config state = do
   -- | Create a signal of URL changes.
   urlSignal <- sampleUrl
-  let routeSignal = urlSignal ~> \r -> PageView (match r)
-  
+    
   -- | Create a signal for WebSocket stats data
   wsInput <- channel Nop
   statsSig <- Socket.setupWs wsInput "ws://localhost:12000/stats"
   let wsSignal = subscribe wsInput
+
+  let routeSignal = urlSignal ~> \r -> PageView (match r)
   let statsSignal = wsSignal ~> \r -> ReceivedStats r
   -- | Map a signal of URL changes to PageView actions.
 
