@@ -10,6 +10,7 @@
   "dependencies": {
     "purescript-pux": "^7.0.0",
     "purescript-pux-devtool": "^4.1.0",
-    "purescript-websocket-simple": "^1.0.1"
+    "purescript-websocket-simple": "^1.0.1",
+    "purescript-argonaut": "^2.0.0"
   }
 }
