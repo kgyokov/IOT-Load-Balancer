@@ -10,11 +10,14 @@
 -author("Kalin").
 
 %% API
--export([encode_stats/1]).
+-export([encode_stats/1, stats/1]).
 
 encode_stats(LBStats) ->
-  Json = lists:map(fun node_stats/1,LBStats),
-  jsone:encode(Json).
+  Map = stats(LBStats),
+  jsone:encode(Map).
+
+stats(LBStats) ->
+  lists:map(fun node_stats/1,LBStats).
 
 node_stats({Node,Brokers}) ->
   #{node => Node, brokers => lists:map(fun broker_stats/1, Brokers)}.
@@ -25,16 +28,7 @@ broker_stats({Broker,BStats}) ->
 broker({Host,Port}) ->
   #{host => host(Host), port => Port}.
 
-host(<<Name>>) -> Name;
-host({B1,B2,B3,B4}) -> ip([B1,B2,B3,B4]);
-host({B1,B2,B3,B4,B5,B6}) -> ip([B1,B2,B3,B4,B5,B6]).
-
-ip(L) ->
-  L1 = lists:map(fun integer_to_list/1, L),
-  L2 = string:join(L1,"."),
-  iolist_to_binary(L2).
-
-%%  [H|T] = lists:map(fun integer_to_list/1, L),
-%%  L2 = lists:foldl(fun(Str,Acc) -> [Str,"."|Acc] end, H, T),
-%%  iolist_to_binary(lists:reverse(L2)).
+host(Name) when is_atom(Name); is_binary(Name); is_list(Name) -> Name;
+host(IP = {_B1,_B2,_B3,_B4}) -> inet:ntoa(IP);
+host(IP = {_B1,_B2,_B3,_B4,_B5,_B6,_B7,_B8}) -> inet:ntoa(IP).
 
