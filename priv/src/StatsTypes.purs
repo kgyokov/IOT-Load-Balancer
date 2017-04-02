@@ -19,7 +19,7 @@ newtype BStats = BStats Int
 -- /todo: Add Host = String | IPAddress
 type Host = String
 
-newtype Broker = Broker { name :: Host, port :: Int }
+newtype Broker = Broker { host :: Host, port :: Int }
 
 type BrokerStats = { broker :: Broker, stats :: BStats}
 
@@ -36,7 +36,7 @@ derive instance brokerEq :: Eq Broker
 derive instance brokerOrd :: Ord Broker 
 
 instance brokerShow :: Show Broker where
-    show (Broker {name,port}) = show name <> ":" <> show port
+    show (Broker {host,port}) = show host <> ":" <> show port
 
 -- JSON PARSING
 instance bstatsDecodeJson :: DecodeJson BStats where
@@ -47,9 +47,9 @@ instance bstatsDecodeJson :: DecodeJson BStats where
 instance brokerDecodeJson :: DecodeJson Broker where
     decodeJson json = do
         obj <- decodeJson json
-        name <- obj.? "host"
+        host <- obj.? "host"
         port <- obj.? "port"
-        pure $ Broker {name,port}
+        pure $ Broker {host,port}
 
 -- instance brokerStatsDecodeJson :: DecodeJson BrokerStats where
 --      decodeJson json = do

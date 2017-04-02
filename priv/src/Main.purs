@@ -36,8 +36,8 @@ config state = do
   statsSig <- Socket.setupWs wsInput "ws://localhost:12000/stats"
   let wsSignal = subscribe wsInput
 
-  let routeSignal = urlSignal ~> \r -> PageView (match r)
-  let statsSignal = wsSignal ~> \r -> ReceivedStats r
+  let routeSignal = urlSignal ~> match >>> PageView
+  let statsSignal = wsSignal ~> ReceivedStats
   -- | Map a signal of URL changes to PageView actions.
 
   pure

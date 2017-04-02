@@ -25,8 +25,7 @@ setupWs chan url = do
 
   ws.onmessage $= \event -> do
     --traceAnyM event
-    let received = (getJsonFromEvent event >>= decodeLBStats) :: (Either String LBStats)
-    case received of 
+    case getLBStatsFromEvent event of 
       Left msg -> log $ "unknown message received: '" <> msg <> "'"
       Right stats -> send chan stats
     
@@ -35,7 +34,11 @@ setupWs chan url = do
     --traceAnyM event
     log "onclose: Connection closed"
 
-getJsonFromEvent = 
-  runMessageEvent >>> runMessage >>> jsonParser
+getLBStatsFromEvent event = 
+  (event # runMessageEvent 
+            >>> runMessage 
+            >>> jsonParser
+            >>= decodeLBStats) :: Either String LBStats
+  
 
 
