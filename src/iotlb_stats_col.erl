@@ -29,9 +29,11 @@
 -define(TABLE, ?MODULE).
 
 %%@todo: replace with broker() type from other branch
--type stats() :: non_neg_integer().
--type broker_stats()::{any(),stats()}.
--type node_broker_stats()::{node(),[broker_stats()]}.
+-type broker() :: {inet:hostname()|inet:ip_address(),inet:port_number()}.
+-type bstats() :: non_neg_integer().
+-type broker_stats()::{any(),bstats()}.
+-type node_stats()::{node(),[broker_stats()]}.
+-type lbstats() :: [node_stats()].
 
 -record(state, {
   stats
@@ -48,10 +50,10 @@ connected(Pid,ClientId,Broker) ->
 get_stats() ->
   gen_server:call(?SERVER,get_stats).
 
--spec get_all_stats() -> [node_broker_stats()].
+-spec get_all_stats() -> [node_stats()].
 get_all_stats() -> get_all_stats(5000).
 
--spec get_all_stats(Timeout::non_neg_integer()) -> [node_broker_stats()].
+-spec get_all_stats(Timeout::non_neg_integer()) -> [node_stats()].
 get_all_stats(Timeout) ->
   gen_server:multi_call(nodes(),?SERVER,get_stats,Timeout).
 

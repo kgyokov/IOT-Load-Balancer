@@ -64,8 +64,9 @@ websocket_handle(_Frame, Req, S = #state{}) ->
 
 websocket_info(get_stats, Req, S = #state{period = Period,timeout = Timeout}) ->
   Stats = iotlb_stats_col:get_all_stats(Timeout),
+  Enc = encode_stats(Stats),
   schedule_stats(Period),
-  {reply, {binary, Stats}, Req, S};
+  {reply, {text, Enc}, Req, S};
 
 websocket_info(_Msg,Req,S) ->
   {ok,Req,S}.
@@ -74,3 +75,17 @@ websocket_terminate(_Reason,_Req,_S) ->
   ok.
 
 schedule_stats(Period) -> erlang:send_after(Period,self(),get_stats).
+
+encode_stats(LBStats) ->
+  Json = lists:map(fun node_stats_to_map/1,LBStats),
+  jsone:encode(Json).
+
+node_stats_to_map({Node,Brokers}) ->
+  #{node => Node, brokers => lists:map(fun broker_stats_to_map/1, Brokers)}.
+
+broker_stats_to_map({Broker,BStats}) ->
+  #{broker => broker_to_map(Broker), stats => BStats}.
+
+broker_to_map({Host,Port}) ->
+  #{host => Host, port => Port}.
+
