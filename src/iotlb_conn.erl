@@ -29,7 +29,7 @@
   transport_info ::any(),
   connected::boolean(),
   sup_pid :: pid(),
-  socket :: pid()                 %% The process sending to the actual device
+  socket :: port()                 %% The process sending to the actual device
 }).
 
 %%%===================================================================

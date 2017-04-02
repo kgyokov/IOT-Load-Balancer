@@ -12,9 +12,9 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_stats/0, get_all_stats/0, connected/3]).
+-export([start_link/0, get_stats/0, get_all_stats/0, get_all_stats/1, connected/3]).
 
--export_type([stats/0,broker_stats/0]).
+-export_type([node_stats/0,lb_stats/0,broker_stats/0]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -31,9 +31,9 @@
 %%@todo: replace with broker() type from other branch
 -type broker() :: {inet:hostname()|inet:ip_address(),inet:port_number()}.
 -type bstats() :: non_neg_integer().
--type broker_stats()::{any(),bstats()}.
+-type broker_stats()::{broker(),bstats()}.
 -type node_stats()::{node(),[broker_stats()]}.
--type lbstats() :: [node_stats()].
+-type lb_stats() :: [node_stats()].
 
 -record(state, {
   stats
@@ -55,7 +55,9 @@ get_all_stats() -> get_all_stats(5000).
 
 -spec get_all_stats(Timeout::non_neg_integer()) -> [node_stats()].
 get_all_stats(Timeout) ->
-  gen_server:multi_call(nodes(),?SERVER,get_stats,Timeout).
+  %% @todo: Also send Bad Nodes
+  {Replies,_} = gen_server:multi_call([node()|nodes()],?SERVER,get_stats,Timeout),
+  Replies.
 
 %%--------------------------------------------------------------------
 %% @doc
