@@ -33,7 +33,7 @@ config state = do
     
   -- | Create a signal for WebSocket stats data
   wsInput <- channel []
-  statsSig <- Socket.setupWs wsInput "ws://localhost:12000/stats"
+  statsSig <- Socket.setupWs wsInput "ws://localhost:12000/ws/stats"
   let wsSignal = subscribe wsInput
 
   let routeSignal = urlSignal ~> match >>> PageView

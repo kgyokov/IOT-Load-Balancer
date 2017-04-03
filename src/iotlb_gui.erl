@@ -19,7 +19,6 @@ init(_Type, Req, Opts) ->
   {ok, Req, #state{timeout = TimeOut}}.
 
 handle(Req, S = #state{timeout = TimeOut}) ->
-  error_logger:info_msg("Calling get_all_stats~n"),
   Stats = iotlb_stats_col:get_all_stats(TimeOut),
   Enc = iotlb_stats_json:encode_stats(Stats),
   {ok, Req2} = cowboy_req:reply(200, [

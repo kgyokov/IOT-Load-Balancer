@@ -19,21 +19,19 @@ setupWs chan url = do
   Connection ws <- newWebSocket (URL url) []
 
   ws.onopen $= \_ -> do
-    --traceAnyM event
     log "onopen: Connection opened"
     log <<< runURL =<< get ws.url
 
   ws.onmessage $= \event -> do
-    --traceAnyM event
     case getLBStatsFromEvent event of 
       Left msg -> log $ "unknown message received: '" <> msg <> "'"
       Right stats -> send chan stats
     
 
   ws.onclose $= \_ -> do
-    --traceAnyM event
     log "onclose: Connection closed"
 
+--getLBStatsFromEvent :: MessageEvent -> Either String LBStats
 getLBStatsFromEvent event = 
   (event # runMessageEvent 
             >>> runMessage 

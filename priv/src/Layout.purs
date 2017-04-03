@@ -12,7 +12,6 @@ data Action
   = PageView Route
   | Stats Gauge.Action
   | ReceivedStats LBStats
-  | Nop
 
 type State =
   { route :: Route
@@ -27,7 +26,7 @@ update :: Action -> State -> State
 update (PageView route) state = state { route = route }
 update (Stats action) state = state { stats = Gauge.update action state.stats }
 update (ReceivedStats action) state = state { stats = Gauge.update (Gauge.UpdateStats action) state.stats }
-update Nop state = state
+
 
 view :: State -> Html Action
 view state =
@@ -35,7 +34,8 @@ view state =
     []
     [ h1 [] [ text "IOT Load Balancer UI" ]
     , p [] [ text "Select a view style for the Broker/Load Balancer stats." ]
-    , case state.route of
-        Home -> map Stats $ Gauge.view state.stats
-        NotFound -> NotFound.view state
+    , map Stats $ Gauge.view state.stats
+      -- case state.route of
+      --   Home -> map Stats $ Gauge.view state.stats
+      --   NotFound -> NotFound.view state
     ]
