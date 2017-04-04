@@ -36,7 +36,7 @@
 -type lb_stats() :: [node_stats()].
 
 -record(state, {
-  stats
+  stats :: orddict:orddict()
 }).
 
 %%%===================================================================
@@ -65,10 +65,10 @@ get_all_stats(Timeout) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link() ->
+-spec(start_link(BrokerMod::module()) ->
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(BrokerMod) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [BrokerMod], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -88,9 +88,10 @@ start_link() ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([]) ->
+init([BrokerMod]) ->
   ets:new(?TABLE,[set,named_table]),
-  {ok, #state{stats = iotlb_stats:new()}}.
+  Brokers = BrokerMod:get_brokers(),
+  {ok, #state{stats = iotlb_stats:new(Brokers)}}.
 
 %%--------------------------------------------------------------------
 %% @private
