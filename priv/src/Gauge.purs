@@ -3,11 +3,11 @@ module App.Gauge where
 import Prelude
 import Data.Maybe
 import Data.Array
+import App.StatsTypes
 import Data.Map as Map
 import Data.Map (Map)
 import Data.Monoid (class Monoid, mempty)
 import Data.Tuple (Tuple(..))
-import App.StatsTypes
 
 import Pux.Html.Events (onClick)
 import Pux.Html.Attributes (style)
@@ -57,13 +57,14 @@ viewAs PerNode s =
         let agg = brokers # map _.stats >>> fold in
         H.div [] 
             [ H.h1  [] [H.text $ show node]
-            , viewStats agg ])
+            , viewStats agg ]
+    )
 
 viewAs PerBroker s =
     let 
-        mergeBrokerStats {broker, stats} = addOrInsert stats broker
-        statsPerBroker = s # concatMap _.brokers 
-                           >>> foldr mergeBrokerStats Map.empty
+        statsPerBroker = s # concatMap _.brokers
+                           >>> map (\{broker, stats} -> Tuple broker stats)
+                           >>> Map.fromFoldableWith  (<>)
                            >>> Map.toAscUnfoldable
     in
     H.div []
@@ -79,8 +80,8 @@ viewAs PerNodeAndBroker s =
     >>> (map \{node,brokerStats} ->
                 H.div []
                 [ H.h1  [] [H.text $ "Node: " <> show node <> " Broker: " <> show brokerStats.broker]
-                    , viewStats brokerStats.stats
-        ])
+                    , viewStats brokerStats.stats ]
+        )
 
 viewAs Aggregate s = 
     let agg = numConnections s in
@@ -120,14 +121,5 @@ numConnections =
     >>> map _.stats
     >>> fold
 
-mapWithDefault :: forall a b. (Monoid a) => (a -> b) -> Maybe a -> Maybe b
-mapWithDefault f =  emptyIfNothing >>> (<$>) f
-
-addOrInsert :: forall k v. (Monoid v, Ord k) => v -> k -> Map k v -> Map k v
-addOrInsert = Map.alter <<< mapWithDefault <<< (<>)
-
-emptyIfNothing :: forall f. Monoid f => Maybe f -> Maybe f
-emptyIfNothing Nothing = Just mempty
-emptyIfNothing ja = ja
 
 

@@ -10,20 +10,15 @@ import Data.Traversable (traverse)
 
 
 type LBStats = Array NodeStats
-
-type TimedVal a = { time::Time, value::a }
-
-
+type NodeStats = { node :: Host, brokers:: Array BrokerStats}
+type BrokerStats = { broker :: Broker, stats :: BStats}
+newtype Broker = Broker { host :: Host, port :: Int }
 newtype BStats = BStats Int
-
--- /todo: Add Host = String | IPAddress
 type Host = String
 
-newtype Broker = Broker { host :: Host, port :: Int }
+-- /todo: Add Host = String | IPAddress
 
-type BrokerStats = { broker :: Broker, stats :: BStats}
-
-type NodeStats = { node :: Host, brokers:: Array BrokerStats}
+type TimedVal a = { time::Time, value::a }
 
 instance bstatsSemigroup :: Semigroup BStats where
     append (BStats b1) (BStats b2 ) = BStats (b1 + b2)
