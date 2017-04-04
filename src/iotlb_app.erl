@@ -5,6 +5,8 @@
 %% Application callbacks
 -export([start/2, stop/1, start/0]).
 
+-define(APPLICATION,?MODULE).
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
@@ -14,7 +16,8 @@ start() -> application:ensure_all_started(iotlb).
 start(_StartType, _StartArgs) ->
     start_lb(),
     start_gui(),
-    iotlb_sup:start_link().
+    BrokerSel = application:get_env(?APPLICATION,broker_selector,iotlb_broker_selection),
+    iotlb_sup:start_link(BrokerSel).
 
 
 start_lb() ->

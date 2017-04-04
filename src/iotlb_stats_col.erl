@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_stats/0, get_all_stats/0, get_all_stats/1, connected/3]).
+-export([start_link/1, get_stats/0, get_all_stats/0, get_all_stats/1, connected/3]).
 
 -export_type([node_stats/0,lb_stats/0,broker_stats/0]).
 

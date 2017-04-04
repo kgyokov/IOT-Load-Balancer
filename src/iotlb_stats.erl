@@ -19,7 +19,7 @@
 new() -> new([]).
 
 new(Brokers) ->
-  Dict = lists:foldl(fun(B,Acc) -> orddict:store(B,0,Acc) end, orddict:new(),Brokers)
+  Dict = lists:foldl(fun(B,Acc) -> orddict:store(B,0,Acc) end, orddict:new(),Brokers),
   #state{brokers = Dict}.
 
 connected(_ClientId,Broker,S = #state{brokers = Brokers}) ->
