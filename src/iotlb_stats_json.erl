@@ -28,7 +28,8 @@ broker_stats({Broker,BStats}) ->
 broker({Host,Port}) ->
   #{host => host(Host), port => Port}.
 
-host(Name) when is_atom(Name); is_binary(Name); is_list(Name) -> Name;
-host(IP = {_B1,_B2,_B3,_B4}) -> inet:ntoa(IP);
+host(Name) when is_atom(Name); is_binary(Name) -> Name;
+host(Name) when is_list(Name) -> list_to_binary(Name);
+host(IP = {_B1,_B2,_B3,_B4}) -> list_to_binary(inet:ntoa(IP));
 host(IP = {_B1,_B2,_B3,_B4,_B5,_B6,_B7,_B8}) -> inet:ntoa(IP).
 
