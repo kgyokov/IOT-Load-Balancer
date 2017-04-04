@@ -53,7 +53,7 @@ numConnectionsView stats =
 viewAs :: ViewType -> (Array NodeStats) -> H.Html Action
 viewAs PerNode s = 
     H.div []
-    (s # map \{node,brokers} ->
+    (s # map \(NodeStats {node,brokers}) ->
         let agg = brokers # map _.stats >>> fold in
         H.div [] 
             [ H.h1  [] [H.text $ show node]
@@ -62,7 +62,7 @@ viewAs PerNode s =
 
 viewAs PerBroker s =
     let 
-        statsPerBroker = s # concatMap _.brokers
+        statsPerBroker = s # concatMap _brokers
                            >>> map (\{broker, stats} -> Tuple broker stats)
                            >>> Map.fromFoldableWith  (<>)
                            >>> Map.toAscUnfoldable
@@ -76,7 +76,7 @@ viewAs PerBroker s =
 
 viewAs PerNodeAndBroker s = 
     H.div [] $
-    s # concatMap (\{node,brokers} -> brokers # map \brokerStats -> {node,brokerStats})
+    s # concatMap (\(NodeStats {node,brokers}) -> brokers # map \brokerStats -> {node,brokerStats})
     >>> (map \{node,brokerStats} ->
                 H.div []
                 [ H.h1  [] [H.text $ "Node: " <> show node <> " Broker: " <> show brokerStats.broker]
@@ -117,7 +117,7 @@ availableViews =
 
 numConnections :: Array NodeStats -> BStats
 numConnections = 
-    concatMap _.brokers
+    concatMap _brokers
     >>> map _.stats
     >>> fold
 
