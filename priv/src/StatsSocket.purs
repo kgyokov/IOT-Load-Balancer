@@ -1,17 +1,16 @@
 module App.StatsSocket where
 
 import Prelude
-import Signal
 import Signal.Channel
-import Control.Bind ((=<<))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Var (($=), get)
-import WebSocket (Connection(..), Message(..), URL(..), runMessageEvent, runMessage, runURL, newWebSocket, WEBSOCKET)
 import Data.Either
 import Data.Argonaut
 import Data.Argonaut.Parser
+import WebSocket (Connection(Connection), URL(URL), WEBSOCKET, newWebSocket, runMessage, runMessageEvent, runURL)
+import DOM.Websocket.Event.Types (MessageEvent)
 import App.StatsTypes
 
 setupWs :: forall eff. Channel LBStats -> String -> Eff (ws::WEBSOCKET, err::EXCEPTION | eff) Unit
@@ -27,16 +26,15 @@ setupWs chan url = do
       Left msg -> log $ "unknown message received: '" <> msg <> "'"
       Right stats -> send chan stats
     
-
   ws.onclose $= \_ -> do
     log "onclose: Connection closed"
 
---getLBStatsFromEvent :: MessageEvent -> Either String LBStats
+getLBStatsFromEvent :: MessageEvent -> Either String LBStats
 getLBStatsFromEvent event = 
-  (event # runMessageEvent 
-            >>> runMessage 
-            >>> jsonParser
-            >>= decodeLBStats) :: Either String LBStats
+  event # runMessageEvent 
+        >>> runMessage 
+        >>> jsonParser
+        >>= decodeLBStats
   
 
 

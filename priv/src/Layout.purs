@@ -4,7 +4,6 @@ import App.NotFound as NotFound
 import App.Routes (Route(Home, NotFound))
 import App.StatsTypes
 import App.Gauge as Gauge
-import App.StatsSocket as Socket
 import Prelude (($), map)
 import Pux.Html (Html, div, h1, p, text)
 
