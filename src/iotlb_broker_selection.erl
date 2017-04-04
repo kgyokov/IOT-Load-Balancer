@@ -12,7 +12,11 @@
 -include_lib("../deps/mqttl/include/mqttl_packets.hrl").
 
 %% API
--export([select_broker/1]).
+-export([select_broker/1, get_brokers/0]).
+
+get_brokers() ->
+  {ok,Brokers} = application:get_env(brokers),
+  Brokers.
 
 select_broker(#'CONNECT'{client_id = ClientId}) ->
   %%@todo: inject these values in a better way

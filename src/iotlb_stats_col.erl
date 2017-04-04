@@ -4,16 +4,17 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 13. Mar 2017 11:01 PM
+%%% Created : 20. Mar 2017 8:42 PM
 %%%-------------------------------------------------------------------
--module(iotlb_conn).
+-module(iotlb_stats_col).
 -author("Kalin").
 
--include_lib("../deps/mqttl/include/mqttl_packets.hrl").
 -behaviour(gen_server).
 
 %% API
--export([start_link/3, new_link/3, unexpected_disconnect/2, bad_packet/2, handle_packet/2]).
+-export([start_link/1, get_stats/0, get_all_stats/0, get_all_stats/1, connected/3]).
+
+-export_type([node_stats/0,lb_stats/0,broker_stats/0]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -25,16 +26,38 @@
 
 -define(SERVER, ?MODULE).
 
+-define(TABLE, ?MODULE).
+
+%%@todo: replace with broker() type from other branch
+-type broker() :: {inet:hostname()|inet:ip_address(),inet:port_number()}.
+-type bstats() :: non_neg_integer().
+-type broker_stats()::{broker(),bstats()}.
+-type node_stats()::{node(),[broker_stats()]}.
+-type lb_stats() :: [node_stats()].
+
 -record(state, {
-  transport_info ::any(),
-  connected::boolean(),
-  sup_pid :: pid(),
-  socket :: port()                 %% The process sending to the actual device
+  stats :: orddict:orddict()
 }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+connected(Pid,ClientId,Broker) ->
+  gen_server:cast(?SERVER,{connected,Pid,ClientId,Broker}).
+
+-spec get_stats() -> broker_stats().
+get_stats() ->
+  gen_server:call(?SERVER,get_stats).
+
+-spec get_all_stats() -> [node_stats()].
+get_all_stats() -> get_all_stats(5000).
+
+-spec get_all_stats(Timeout::non_neg_integer()) -> [node_stats()].
+get_all_stats(Timeout) ->
+  %% @todo: Also send Bad Nodes
+  {Replies,_} = gen_server:multi_call([node()|nodes()],?SERVER,get_stats,Timeout),
+  Replies.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -42,24 +65,10 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link(ReceiverPid::pid(),SupPid::pid(),TSO::any()) ->
+-spec(start_link(BrokerMod::module()) ->
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link(ReceiverPid,SupPid,TSO) ->
-  gen_server:start_link(?MODULE, [ReceiverPid,SupPid,TSO], []).
-
-
-new_link(Transport,Socket,Opts) ->
-  TSO = {Transport,Socket,Opts},
-  iotlb_conn_sup_sup:start_connection(self(),TSO).
-
-%%todo: Maybe just have the receiver quit let the mqttl_conn process be killed?
-unexpected_disconnect(_Pid,_Details) -> ok. %%gen_server:cast(Pid,{disconnect,Details}).
-
-%%todo: Maybe just have the receive quit and let the mqttl_conn process be killed?
-bad_packet(_Pid,_Reason) -> ok. %%gen_server:cast(Pid,{bad_packet,Reason}).
-
-handle_packet(Pid,Packet) ->
-  gen_server:call(Pid,{packet,Packet}).
+start_link(BrokerMod) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [BrokerMod], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -79,14 +88,10 @@ handle_packet(Pid,Packet) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
-  link(ReceiverPid),
-  TimeOut = maps:get(conn_timeout,Opts,10000),
-  erlang:send_after(TimeOut,self(),conn_timeout),
-  {ok, #state{sup_pid = SupPid,
-              connected = false,
-              transport_info = TSO}
-  }.
+init([BrokerMod]) ->
+  ets:new(?TABLE,[set,named_table]),
+  Brokers = BrokerMod:get_brokers(),
+  {ok, #state{stats = iotlb_stats:new(Brokers)}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,28 +109,12 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_call({packet,Packet = #'CONNECT'{client_id = ClientId}},_From,
-              S = #state{connected = false,
-                         sup_pid = SupPid,
-                         transport_info = TRO}) ->
-  %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
-  {_,_,Opts} = TRO,
-  {Address,Port} = iotlb_broker_selection:select_broker(Packet),
-  {ok,BrokerSocket} = connect_to_broker(Address,Port,Opts),
-  {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid, TRO,BrokerSocket),
-  ok = gen_tcp:controlling_process(BrokerSocket,BrokerForwarder),
-  S1 = S#state{socket = BrokerSocket,connected = true},
-  iotlb_stats_col:connected(self(),ClientId,{Address,Port}),
-  forward_to_broker(Packet,S1);
-
-handle_call({packet,_Packet},_From,S = #state{connected = false}) ->
-  {stop, premature_packet, S}; %%Maybe specify a different reason
-
-handle_call({packet,Packet},_From,S = #state{connected = true}) ->
-  forward_to_broker(Packet,S);
+handle_call(get_stats, _From, S = #state{stats = Stats}) ->
+  Response = iotlb_stats:get_stats(Stats),
+  {reply, Response, S};
 
 handle_call(_Request, _From, State) ->
-  {reply, ok, State}.
+  {noreply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -138,6 +127,12 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
+handle_cast({connected,Pid,ClientId,Broker}, S = #state{stats = Stats}) ->
+  Ref = monitor(process,Pid),
+  ets:insert_new(?TABLE,{Ref,ClientId,Broker}),
+  Stats1 = iotlb_stats:connected(ClientId,Broker,Stats),
+  {noreply, S#state{stats = Stats1}};
 
 handle_cast(_Request, State) ->
   {noreply, State}.
@@ -157,8 +152,16 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_info(conn_timeout, S = #state{connected = false}) ->
-  {stop, conn_timeout, S};
+handle_info({'DOWN', Ref, _, _, _}, S = #state{stats = Stats}) ->
+  %% This check might not event be necessary if we are sure we will only get 'DOWN' messages from connection processes
+  S1 =
+    case ets:lookup(?TABLE,Ref) of
+      [] -> ok;
+      [{Ref,ClientId,Broker}] ->
+        ets:delete(?TABLE,Ref),
+        S#state{stats = iotlb_stats:disconnected(ClientId,Broker,Stats)}
+    end,
+  {noreply, S1};
 
 handle_info(_Info, State) ->
   {noreply, State}.
@@ -176,8 +179,8 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
-terminate(_Reason, _S) ->
-  ok.
+terminate(_Reason, _State) ->
+  ets:delete(?TABLE).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -196,17 +199,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-connect_to_broker(Address,Port,Opts)->
-  ConnTimeOut = maps:get(server_connect_timeout,Opts,10000),
-  gen_tcp:connect(Address,Port,[binary, {active,true}],ConnTimeOut).
-
-forward_to_broker(Packet,S = #state{socket = BrokerSender}) ->
-  Binary = mqttl_builder:build_packet(Packet),
-  error_logger:info_msg("Sending to broker Packet ~p with Binary ~p~n",[Packet,Binary]),
-  case gen_tcp:send(BrokerSender,Binary)of
-    ok ->
-      {reply,ok,S};
-    {error, _Reason} ->
-      {stop, unable_to_send, {error,_Reason}, S}
-  end.

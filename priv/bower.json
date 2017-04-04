@@ -1,0 +1,16 @@
+{
+  "name": "iotlb-web-ui",
+  "homepage": "https://github.com/kgyokov/IOT-Load-Balancer",
+  "authors": [
+    "Kalin Gyokov"
+  ],
+  "description": "Web UI for the IOTLB Erlang application.",
+  "main": "support/index.js",
+  "license": "MIT",
+  "dependencies": {
+    "purescript-pux": "^7.0.0",
+    "purescript-pux-devtool": "^4.1.0",
+    "purescript-websocket-simple": "^1.0.1",
+    "purescript-argonaut": "^2.0.0"
+  }
+}
