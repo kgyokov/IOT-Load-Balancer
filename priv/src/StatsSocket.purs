@@ -22,8 +22,12 @@ setupWs chan url = do
     log <<< runURL =<< get ws.url
 
   ws.onmessage $= \event -> do
-    case getLBStatsFromEvent event of 
-      Left msg -> log $ "unknown message received: '" <> msg <> "'"
+    let msg = event # runMessageEvent 
+                    >>> runMessage 
+    let decoded = (msg # jsonParser 
+                   >>= decodeLBStats) :: Either String LBStats
+    case decoded of 
+      Left error -> log $ "unknown message received: '" <> msg <>" with error: " <> error <> "'"
       Right stats -> send chan stats
     
   ws.onclose $= \_ -> do
