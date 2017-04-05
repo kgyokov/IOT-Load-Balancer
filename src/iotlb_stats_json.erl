@@ -19,8 +19,11 @@ encode_stats(LBStats) ->
 stats(LBStats) ->
   lists:map(fun node_stats/1,LBStats).
 
-node_stats({Node,Brokers}) ->
-  #{node => Node, brokers => lists:map(fun broker_stats/1, Brokers)}.
+node_stats({ok,Node,Brokers}) ->
+  #{tag => ok, node => Node, brokers => lists:map(fun broker_stats/1, Brokers)};
+
+node_stats({bad_node,Node}) ->
+  #{tag => bad_node, node => Node}.
 
 broker_stats({Broker,BStats}) ->
   #{broker => broker(Broker), stats => BStats}.

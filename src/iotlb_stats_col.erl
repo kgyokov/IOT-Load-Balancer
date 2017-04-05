@@ -53,11 +53,11 @@ get_stats() ->
 -spec get_all_stats() -> [node_stats()].
 get_all_stats() -> get_all_stats(5000).
 
--spec get_all_stats(Timeout::non_neg_integer()) -> [node_stats()].
+-spec get_all_stats(Timeout::non_neg_integer()) -> [{ok,node_stats()}|{bad_node,node()}].
 get_all_stats(Timeout) ->
-  %% @todo: Also send Bad Nodes
-  {Replies,_} = gen_server:multi_call([node()|nodes()],?SERVER,get_stats,Timeout),
-  Replies.
+  {Replies,BadNodes} = gen_server:multi_call([node()|nodes()],?SERVER,get_stats,Timeout),
+  [{ok,Node,Reply} || {Node,Reply} <- Replies]
+    ++ [{bad_node,Node} || Node <- BadNodes].
 
 %%--------------------------------------------------------------------
 %% @doc
