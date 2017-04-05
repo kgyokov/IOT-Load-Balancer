@@ -2,16 +2,23 @@ module App.StatsSocket where
 
 import Prelude
 import Signal.Channel
+import App.StatsTypes (LBStats, decodeLBStats)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Var (($=), get)
-import Data.Either (Either(..))
 import Data.Argonaut.Parser (jsonParser)
+import Data.Either (Either(..))
 import WebSocket (Connection(Connection), URL(URL), WEBSOCKET, newWebSocket, runMessage, runMessageEvent, runURL)
-import App.StatsTypes (LBStats, decodeLBStats)
 
-setupWs :: forall eff. Channel LBStats -> String -> Eff (ws::WEBSOCKET, err::EXCEPTION | eff) Unit
+
+data Action = 
+      NewStats LBStats
+    | ChannelError
+    | ChannelClosed
+    | Starting
+
+setupWs :: forall eff. Channel Action -> String -> Eff (ws::WEBSOCKET, err::EXCEPTION | eff) Unit
 setupWs chan url = do
   Connection ws <- newWebSocket (URL url) []
 
@@ -19,17 +26,26 @@ setupWs chan url = do
     log "onopen: Connection opened"
     log <<< runURL =<< get ws.url
 
-  ws.onmessage $= \event -> do
+  ws.onmessage $= \event ->
     let msg = event # runMessageEvent 
                     >>> runMessage 
-    let decoded = (msg # jsonParser 
+        decoded = (msg # jsonParser 
                    >>= decodeLBStats) :: Either String LBStats
+    in
     case decoded of 
-      Left error -> log $ "unknown message received: '" <> msg <>" with error: " <> error <> "'"
-      Right stats -> send chan stats
-    
+      Left error -> do
+        log $ "unknown message received: '" <> msg <>" with error: " <> error <> "'"
+        send chan ChannelError
+      Right stats -> send chan (NewStats stats)
+      
+  ws.onerror $= \_ -> do
+    log "onerror: Connection error"
+    send chan ChannelError
+
   ws.onclose $= \_ -> do
     log "onclose: Connection closed"
+    send chan ChannelClosed
+
   
 
 

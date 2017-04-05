@@ -1,13 +1,10 @@
 module Main where
 
 import Prelude
-import Control.Bind ((=<<))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Data.Maybe (Maybe(..))
 
 import DOM (DOM)
-import DOM.Node.Document (doctype)
 --import Debug.Trace (traceAnyM)
 
 import Pux (App, Config, CoreEffects, fromSimple, renderToDOM, start)
@@ -32,19 +29,19 @@ config state = do
   urlSignal <- sampleUrl
     
   -- | Create a signal for WebSocket stats data
-  wsInput <- channel []
+  wsInput <- channel Socket.Starting
   statsSig <- Socket.setupWs wsInput "ws://localhost:12000/ws/stats"
   let wsSignal = subscribe wsInput
 
   let routeSignal = urlSignal ~> match >>> PageView
-  let statsSignal = wsSignal ~> ReceivedStats
+  let socketSignal = wsSignal ~> Received
   -- | Map a signal of URL changes to PageView actions.
 
   pure
     { initialState: state
     , update: fromSimple update
     , view: view
-    , inputs: [routeSignal, statsSignal] }
+    , inputs: [routeSignal, socketSignal] }
 
 -- | Entry point for the browser.
 main :: State -> Eff (CoreEffects AppEffects) (App State Action)
