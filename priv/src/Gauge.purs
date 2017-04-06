@@ -3,18 +3,25 @@ module App.Gauge where
 import Prelude
 import Data.Maybe
 import Data.Array
-import App.StatsTypes
 import Data.Boolean
 import Data.Map as Map
+import CSS (padding)
 import Control.Bind ((=<<))
+
 import Data.Map (Map)
 import Data.Monoid (class Monoid, mempty)
 import Data.Tuple (Tuple(..))
-import Pux.CSS (FontFaceFormat(..))
 
-import Pux.Html.Events (onClick)
+import CSS.Display
+import CSS.Color
+import CSS.Background
+import CSS.Size
+--import Pux.CSS (class Background)
 import Pux.Html.Attributes (style)
+import Pux.Html.Events (onClick)
+import Pux.CSS as PSS
 import Pux.Html as H
+import App.StatsTypes
 
 
 data Action = UpdateStats LBStats | ChangeView ViewType
@@ -121,18 +128,21 @@ viewBStats stats =
 
 selectView :: ViewType -> H.Html Action
 selectView viewType = 
-    H.ul [] $
+    H.ul [ selectViewStyle ] $
      optionView viewType <$> availableViews
 
 optionView :: ViewType -> ViewType -> H.Html Action
 optionView sel v =
     H.li
-        (if v == sel then [style selectedStyle] else [onClick $ const (ChangeView v)])
+        (if v == sel then [selectedStyle] else [onClick $ const (ChangeView v)])
         [H.text $ show v]
 
-selectedStyle :: Array (Tuple String String)
+--selectedStyle :: Array (Tuple String String)
+selectedStyle :: forall a. H.Attribute a
 selectedStyle = 
-    [Tuple "color" "blue"]
+    PSS.style do 
+    PSS.background (rgb 10 100 200)
+    PSS.color (rgb 255 255 255)
 
 alertStyle :: Array (Tuple String String)
 alertStyle = 
@@ -152,6 +162,14 @@ areNodeStatsOnline :: NodeStats -> Boolean
 areNodeStatsOnline (NodeStats _) = true
 areNodeStatsOnline (BadNode _) = false
 
+
+selectViewStyle :: forall a. H.Attribute a
+selectViewStyle  = 
+    PSS.style do 
+        padding (15.0 # px) (15.0 # px) (15.0 # px) (15.0 # px)
+        float floatLeft
+        background  (rgb 200 240 250)
+        PSS.color (rgb 10 100 200)
 
 
 
