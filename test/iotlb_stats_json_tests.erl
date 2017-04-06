@@ -13,7 +13,7 @@
 
 simple_test() ->
   Stats = [
-    {<<"node1">>,
+    {ok,<<"node1">>,
       [
         {
           {{127,0,0,1},1234},
@@ -37,7 +37,7 @@ simple_test() ->
         }
       ]
     },
-    {"node2",
+    {ok,"node2",
       [
         {
           {{127,0,0,1},1234},
@@ -45,13 +45,14 @@ simple_test() ->
         }
       ]
     },
-    {node3,
+    {ok,node3,
       [
         {
           {{127,0,0,1},1234},
           1234
         }
       ]
-    }
+    },
+    {bad_node,<<"node4">>}
   ],
   ?assertNotException(_,_,iotlb_stats_json:encode_stats(Stats)).
