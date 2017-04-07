@@ -9,7 +9,7 @@
 -module(iotlb_broker_selection).
 -author("Kalin").
 
--include_lib("../deps/mqttl/include/mqttl_packets.hrl").
+-include_lib("mqttl/include/mqttl_packets.hrl").
 
 %% API
 -export([select_broker/1, get_brokers/0]).
