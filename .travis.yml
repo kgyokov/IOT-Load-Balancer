@@ -8,7 +8,8 @@ otp_release:
   - 18.3
   - 19.0
 after_success:
-  - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/*
+  - mkdir latest
+  - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/
 deploy:
     provider: codedeploy
     access_key_id: "$AWS_IAM_DEPLOY_KEY_ID"
