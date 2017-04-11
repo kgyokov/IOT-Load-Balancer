@@ -11,13 +11,14 @@ after_success:
   - mkdir latest
   - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/
 deploy:
+    provider: s3
     provider: codedeploy
     access_key_id: "$AWS_IAM_DEPLOY_KEY_ID"
     secret_access_key: "$AWS_IAM_DEPLOY_SECRET_ACCESS_KEY"
     bucket: "iotlb.builds"
     key: latest/*
     application: iotlb
-    deployment_group: itolb_deployment_group
+    deployment_group: iot_deployment_group
     on:
       all_branches: true
 
