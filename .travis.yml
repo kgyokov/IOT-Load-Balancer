@@ -1,4 +1,9 @@
 language: erlang
+install:
+  - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+script:
+  - ./rebar3 eunit
+  - ./rebar3 as prod tar
 otp_release:
   - 18.3
   - 19.0

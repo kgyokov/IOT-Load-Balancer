@@ -9,7 +9,7 @@
 -module(iotlb_conn).
 -author("Kalin").
 
--include_lib("../deps/mqttl/include/mqttl_packets.hrl").
+-include_lib("mqttl/include/mqttl_packets.hrl").
 -behaviour(gen_server).
 
 %% API
