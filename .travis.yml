@@ -17,6 +17,7 @@ deploy:
     secret_access_key: "$AWS_IAM_DEPLOY_SECRET_ACCESS_KEY"
     bucket: "iotlb.builds"
     region: us-west-1
+    local_dir: latest
     key: latest/*
 #    application: iotlb
 #    deployment_group: iot_deployment_group
