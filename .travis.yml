@@ -16,7 +16,7 @@ deploy:
     access_key_id: "$AWS_IAM_DEPLOY_KEY_ID"
     secret_access_key: "$AWS_IAM_DEPLOY_SECRET_ACCESS_KEY"
     bucket: "iotlb.builds"
-#    key: latest/*
+    key: latest/*
 #    application: iotlb
 #    deployment_group: iot_deployment_group
     on:
