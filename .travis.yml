@@ -18,6 +18,7 @@ deploy:
     bucket: "iotlb.builds"
     region: us-west-1
     local_dir: latest
+    skip_cleanup: true
     key: latest/*
 #    application: iotlb
 #    deployment_group: iot_deployment_group
