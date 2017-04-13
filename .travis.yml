@@ -7,3 +7,21 @@ script:
 otp_release:
   - 18.3
   - 19.0
+after_success:
+  - mkdir latest
+  - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/
+deploy:
+    provider: s3
+    # provider: codedeploy
+    access_key_id: "$AWS_IAM_DEPLOY_KEY_ID"
+    secret_access_key: "$AWS_IAM_DEPLOY_SECRET_ACCESS_KEY"
+    bucket: "iotlb.builds"
+    region: us-west-1
+    local_dir: latest
+    skip_cleanup: true
+    key: latest/*
+#    application: iotlb
+#    deployment_group: iot_deployment_group
+    on:
+      all_branches: true
+
