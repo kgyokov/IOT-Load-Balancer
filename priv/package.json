@@ -23,6 +23,7 @@
   "version" : "0.5.0",
   "dependencies": {
     "bower": "^1.7.9",
+    "pulp" : "10.0.4",
     "preact": "^7.1.0",
     "preact-compat": "^3.9.4",
     "react-dom" : "15.5.4",
