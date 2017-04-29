@@ -4,16 +4,18 @@ otp_release:
   - 19.0
 install:
   - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+  - cd priv
   - nvm install 7
   - npm install -g purescript@0.10.7 pulp@10.0.4 bower
+  - cd..
 script:
-  # Erlang build
-  - ./rebar3 eunit
-  - ./rebar3 as prod tar
   # Purescript compilation
   - cd priv
   - pulp browserify --optimise --to main.js
   - cd ..
+  # Erlang build
+  - ./rebar3 eunit
+  - ./rebar3 as prod tar
 after_success:
   - mkdir latest
   - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/
