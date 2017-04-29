@@ -4,14 +4,14 @@ otp_release:
   - 19.0
 install:
   - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
-  - cd priv
+  - cd purescript
   - nvm install 7
   - cd ..
 script:
   # Purescript compilation
-  - cd priv
+  - cd purescript
   - npm install
-  - pulp browserify --optimise --to main.js
+  - pulp browserify --optimise --to ../priv/app.js
   - cd ..
   # Erlang build
   - ./rebar3 eunit
