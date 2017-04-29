@@ -11,6 +11,7 @@ install:
 script:
   # Purescript compilation
   - cd priv
+  - bower install
   - pulp browserify --optimise --to main.js
   - cd ..
   # Erlang build
