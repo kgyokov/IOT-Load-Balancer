@@ -9,6 +9,7 @@ install:
   - cd ..
 script:
   # Purescript compilation
+  - cd priv
   - npm install
   - pulp browserify --optimise --to main.js
   - cd ..
