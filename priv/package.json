@@ -26,6 +26,7 @@
     "pulp" : "10.0.4",
     "preact": "^7.1.0",
     "preact-compat": "^3.9.4",
+    "react" : "15.5.4",
     "react-dom" : "15.5.4",
     "purescript": "^0.10.7",
     "purescript-psa": "^0.3.9",
