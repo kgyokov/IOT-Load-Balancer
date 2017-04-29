@@ -1,0 +1,33 @@
+{
+  "name": "iotlb-web-ui",
+  "homepage": "https://github.com/kgyokov/IOT-Load-Balancer",
+  "authors": [
+    "Kalin Gyokov"
+  ],
+  "description": "Web UI for the IOTLB Erlang application.",
+  "main": "support/index.js",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "bower cache clean && bower install",
+    "clean": "rimraf static/dist && rimraf dist",
+    "build": "npm run clean",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "http",
+    "url": "https://github.com/kgyokov/IOT-Load-Balancer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kgyokov/IOT-Load-Balancer/issues"
+  },
+  "version" : "0.5.0",
+  "dependencies": {
+    "bower": "^1.7.9",
+    "preact": "^7.1.0",
+    "preact-compat": "^3.9.4",
+    "react-dom" : "15.5.4",
+    "purescript": "^0.10.7",
+    "purescript-psa": "^0.3.9",
+    "rimraf": "^2.5.2"
+  }
+}
