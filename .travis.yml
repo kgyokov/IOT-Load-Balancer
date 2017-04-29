@@ -1,9 +1,15 @@
 language: erlang
 install:
   - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+  - npm install -g purescript@0.10.0 pulp bower
 script:
+  # Erlang build
   - ./rebar3 eunit
   - ./rebar3 as prod tar
+  # Purescript compilation
+  - cd priv
+  - pulp browserify --optimise --to main.js
+  - cd ..
 otp_release:
   - 18.3
   - 19.0
