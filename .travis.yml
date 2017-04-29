@@ -1,10 +1,11 @@
-language:
-  - erlang
-  - node_js
-node_js:
-  - "7"
+language: erlang
+otp_release:
+  - 18.3
+  - 19.0
 install:
   - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+  - nvm install 7
+  - nvm use node
   - npm install -g purescript@0.10.7 pulp bower
 script:
   # Erlang build
@@ -14,9 +15,6 @@ script:
   - cd priv
   - pulp browserify --optimise --to main.js
   - cd ..
-otp_release:
-  - 18.3
-  - 19.0
 after_success:
   - mkdir latest
   - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/
