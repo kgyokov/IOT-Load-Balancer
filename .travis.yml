@@ -1,7 +1,7 @@
 language: erlang
 install:
   - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
-  - npm install -g purescript@0.10.0 pulp bower
+  - npm install -g purescript@0.10.7 pulp bower
 script:
   # Erlang build
   - ./rebar3 eunit
