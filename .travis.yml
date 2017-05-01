@@ -10,7 +10,7 @@ install:
 script:
   # Purescript compilation
   - cd purescript
-  - npm install
+  - npm install --production
   - pulp browserify --optimise --to ../priv/static/app.js
   - cd ..
   # Erlang build
