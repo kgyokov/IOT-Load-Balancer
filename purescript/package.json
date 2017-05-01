@@ -1,0 +1,49 @@
+{
+  "name": "iotlb-web-ui",
+  "homepage": "https://github.com/kgyokov/IOT-Load-Balancer",
+  "authors": [
+    "Kalin Gyokov"
+  ],
+  "description": "Web UI for the IOTLB Erlang application.",
+  "main": "support/index.js",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "bower cache clean && bower install",
+    "clean": "rimraf static/dist && rimraf dist && rimraf output",
+    "build": "npm run clean && webpack --config ./webpack.production.config.js --progress --profile --colors",
+    "watch": "npm run clean && node ./webpack.config.js",
+    "serve": "http-server static --cors -p 3000",
+    "start": "npm run watch",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "browserify" : "pulp browserify --optimise"
+  },
+  "repository": {
+    "type": "http",
+    "url": "https://github.com/kgyokov/IOT-Load-Balancer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kgyokov/IOT-Load-Balancer/issues"
+  },
+  "version" : "0.5.0",
+  "dependencies": {
+    "bower": "^1.7.9",
+    "pulp" : "10.0.4",
+    "purescript": "^0.10.7",
+    "purescript-psa": "^0.3.9",
+    "react" : "15.5.4",
+    "react-dom" : "15.5.4",
+    "rimraf": "^2.5.2"
+  },
+  "devDependencies" : {
+    "connect-history-api-fallback": "^1.2.0",
+    "express": "^4.13.4",
+    "html-webpack-plugin": "^2.15.0",
+    "http-server": "^0.9.0",
+    "purs-loader": "^2.4.1",
+    "source-map-loader": "^0.1.5",
+    "webpack": "^2.1.0-beta.25",
+
+    "webpack-dev-middleware": "^1.9.0",
+    "webpack-hot-middleware": "^2.12.2"
+  }
+}

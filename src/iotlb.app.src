@@ -1,0 +1,18 @@
+{application, iotlb,
+ [
+  {description, "IOT Layer7 load balancer"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  mqttl
+                 ]},
+  {mod, { iotlb_app, []}},
+  {env, [
+    {brokers,
+      [
+        {{127,0,0,1},1884}]}
+    ]
+  }
+ ]}.

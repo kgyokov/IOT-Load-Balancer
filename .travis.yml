@@ -1,0 +1,38 @@
+language: erlang
+sudo: required
+dist: trusty
+otp_release:
+  - 18.3
+  - 19.0
+install:
+  - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+  - cd purescript
+  - nvm install 7
+  - cd ..
+script:
+  # Purescript compilation
+  - cd purescript
+  - npm install --production
+  - npm run browserify > ../priv/static/app.js
+  - cd ..
+  # Erlang build
+  - ./rebar3 eunit
+  - ./rebar3 as prod tar
+after_success:
+  - mkdir latest
+  - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/
+deploy:
+    provider: s3
+    # provider: codedeploy
+    access_key_id: "$AWS_IAM_DEPLOY_KEY_ID"
+    secret_access_key: "$AWS_IAM_DEPLOY_SECRET_ACCESS_KEY"
+    bucket: "iotlb.builds"
+    region: us-west-1
+    local_dir: latest
+    skip_cleanup: true
+    key: latest/*
+#    application: iotlb
+#    deployment_group: iot_deployment_group
+    on:
+      all_branches: true
+
