@@ -43,8 +43,10 @@ start_gui() ->
         %% {HostMatch, list({PathMatch, Handler, Opts})}
         {'_',
             [
-             {"/ws/stats", iotlb_gui_ws, ProcessOpts},
-             {"/stats", iotlb_gui, ProcessOpts}
+                {"/ws/stats", iotlb_gui_ws, ProcessOpts},
+                {"/stats", iotlb_gui, ProcessOpts},
+                {"/", cowboy_static, {priv_file, iotlb, "static/index.html"}},
+                {"/[...]", cowboy_static, {priv_file, iotlb, "static/[...]"}}
             ]
         }
     ]),

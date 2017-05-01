@@ -10,8 +10,8 @@ install:
 script:
   # Purescript compilation
   - cd purescript
-  - npm install
-  - pulp browserify --optimise --to ../priv/app.js
+  - npm install --production
+  - pulp browserify --optimise --to ../priv/static/app.js
   - cd ..
   # Erlang build
   - ./rebar3 eunit
