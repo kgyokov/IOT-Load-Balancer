@@ -1,12 +1,21 @@
 language: erlang
-install:
-  - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
-script:
-  - ./rebar3 eunit
-  - ./rebar3 as prod tar
 otp_release:
   - 18.3
   - 19.0
+install:
+  - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+  - cd purescript
+  - nvm install 7
+  - cd ..
+script:
+  # Purescript compilation
+  - cd purescript
+  - npm install
+  - pulp browserify --optimise --to ../priv/app.js
+  - cd ..
+  # Erlang build
+  - ./rebar3 eunit
+  - ./rebar3 as prod tar
 after_success:
   - mkdir latest
   - cp ./_build/prod/rel/iotlb/iotlb-*.tar.gz latest/
