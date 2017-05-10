@@ -14,13 +14,13 @@
 start() -> application:ensure_all_started(?APPLICATION).
 
 start(_StartType, _StartArgs) ->
-    start_lb(),
+    start_listeners(),
     start_gui(),
     BrokerSel = application:get_env(?APPLICATION,broker_selector,iotlb_broker_selection),
     iotlb_sup:start_link(BrokerSel).
 
 
-start_lb() ->
+start_listeners() ->
     ProtOpts = [{shutdown,5000}],
     ConnOpts = #{},
     TransportOpts =[
