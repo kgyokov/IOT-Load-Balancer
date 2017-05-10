@@ -5,13 +5,13 @@
 %% Application callbacks
 -export([start/2, stop/1, start/0]).
 
--define(APPLICATION,?MODULE).
+-define(APPLICATION,iotlb).
 
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
 
-start() -> application:ensure_all_started(iotlb).
+start() -> application:ensure_all_started(?APPLICATION).
 
 start(_StartType, _StartArgs) ->
     start_lb(),
