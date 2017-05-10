@@ -59,7 +59,7 @@ start_gui() ->
 
 get_broker_sel() ->
     BrokerSel = application:get_env(?APPLICATION,broker_selector,iotlb_broker_selection),
-    BrokersStr = [io_lib:format("~p~n",Broker) || Broker <- BrokerSel:get_brokers()],
+    BrokersStr = [io_lib:format("~p~n",[Broker]) || Broker <- BrokerSel:get_brokers()],
     error_logger:info_msg("Starting with available brokers: ~p~n",lists:flatten(BrokersStr)),
     BrokerSel.
 
