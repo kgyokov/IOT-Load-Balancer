@@ -16,7 +16,7 @@ start() -> application:ensure_all_started(?APPLICATION).
 start(_StartType, _StartArgs) ->
     start_listeners(),
     start_gui(),
-    BrokerSel = application:get_env(?APPLICATION,broker_selector,iotlb_broker_selection),
+    BrokerSel = get_broker_sel(),
     iotlb_sup:start_link(BrokerSel).
 
 
@@ -56,6 +56,12 @@ start_gui() ->
     TransOpts =[{port,12000}],
     {ok,_} = cowboy:start_http(gui_http,10,TransOpts,ProtOpts).
 
+
+get_broker_sel() ->
+    BrokerSel = application:get_env(?APPLICATION,broker_selector,iotlb_broker_selection),
+    BrokersStr = [io_lib:format("~p~n",Broker) || Broker <- BrokerSel:get_brokers()],
+    error_logger:info_msg("Starting with available brokers: ~p~n",lists:flatten(BrokersStr)),
+    BrokerSel.
 
 stop(_State) ->
     ok.
