@@ -15,7 +15,7 @@
     "serve": "http-server static --cors -p 3000",
     "start": "npm run watch",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "browserify" : "pulp browserify --optimise --to ../priv/static/app.js"
+    "browserify" : "pulp browserify --main Main --optimise --to ../priv/static/app.js"
   },
   "repository": {
     "type": "http",
