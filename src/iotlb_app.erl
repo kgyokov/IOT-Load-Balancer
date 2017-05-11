@@ -46,7 +46,7 @@ start_gui() ->
                 {"/ws/stats", iotlb_gui_ws, ProcessOpts},
                 {"/stats", iotlb_gui, ProcessOpts},
                 {"/", cowboy_static, {priv_file, iotlb, "static/index.html"}},
-                {"/[...]", cowboy_static, {priv_dir, iotlb, "static"}}
+                {"/static/[...]", cowboy_static, {priv_dir, iotlb, "static"}}
             ]
         }
     ]),

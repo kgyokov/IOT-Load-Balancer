@@ -13,7 +13,7 @@ script:
   # Purescript compilation
   - cd purescript
   - npm install --production
-  - npm run browserify > ../priv/static/app.js
+  - npm run browserify
   - cd ..
   # Erlang build
   - ./rebar3 eunit
