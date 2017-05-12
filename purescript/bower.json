@@ -12,7 +12,8 @@
     "purescript-pux-devtool": "^4.1.0",
     "purescript-websocket-simple": "^1.0.1",
     "purescript-argonaut": "^2.0.0",
-    "purescript-css": "^2.1.0"
+    "purescript-css": "^2.1.0",
+    "purescript-uri": "2.0.0"
   },
   "resolutions": {
     "purescript-css": "^2.1.0"
