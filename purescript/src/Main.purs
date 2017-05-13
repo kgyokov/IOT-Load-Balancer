@@ -66,10 +66,7 @@ convertToWsUrl url =
   case U.runParseURI url of
     Right 
       (U.URI _ 
-        h@(U.HierarchicalPart 
-            auth@(Just authority) 
-            (Just path) 
-          )
+        h@(U.HierarchicalPart auth@(Just _) _ )
        _  _
       ) ->
       let wsScheme = Just (U.URIScheme "ws")
@@ -77,7 +74,7 @@ convertToWsUrl url =
           wsH = U.HierarchicalPart auth wsPath
       in
       pure $ U.printURI $ U.URI wsScheme wsH Nothing Nothing
-    _ -> throwException $ error "Could not get the URL for the stats websocket socket"
+    _ -> throwException $ error "Could not get the URL for the stats websocket"
 
 getInitialPath :: forall eff. Eff (dom :: DOM | eff) String
 getInitialPath =  window >>= location >>= pathname
