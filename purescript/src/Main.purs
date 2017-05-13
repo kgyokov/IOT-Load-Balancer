@@ -3,8 +3,9 @@ module Main where
 import Prelude
 import Data.Either
 import Data.Maybe
+import App.Layout (Action(..))
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (EXCEPTION,throwException,error)
+import Control.Monad.Eff.Exception (EXCEPTION, throwException, error)
 import Data.URI.Types (HierarchicalPart(..))
 
 import DOM (DOM)
@@ -25,7 +26,7 @@ import Signal.Channel (channel, subscribe, CHANNEL)
 import WebSocket(WEBSOCKET)
 
 import App.Layout (Action(..), State, view, update, init)
-import App.Routes (match)
+import App.Routes (match,Route)
 import App.StatsSocket as Socket
 
 type AppEffects = (dom :: DOM, ws :: WEBSOCKET)
@@ -34,32 +35,31 @@ type AppEffects = (dom :: DOM, ws :: WEBSOCKET)
 config :: forall eff. State -> Eff (dom :: DOM, channel :: CHANNEL, err :: EXCEPTION, ws :: WEBSOCKET | eff) (Config State Action AppEffects)
 config state = do
   -- | Create a signal of URL changes.
-  routeSignal <- configRoute
+  routeSignal <- getRouteSignal
   -- | Create a signal for WebSocket stats data
-  socketSignal <- configSocket
+  socketSignal <- getSocketSignal 
   pure
     { initialState: state
     , update: fromSimple update
     , view: view
-    , inputs: [routeSignal, socketSignal] }
+    , inputs: 
+        [ routeSignal ~> PageView
+        , socketSignal ~> Received ] }
 
-configSocket :: forall eff. Eff (dom :: DOM, err :: EXCEPTION, channel :: CHANNEL, ws :: WEBSOCKET | eff) (Signal Action)
-configSocket = do 
+getSocketSignal :: forall eff. Eff (dom :: DOM, err :: EXCEPTION, channel :: CHANNEL, ws :: WEBSOCKET | eff) (Signal Socket.Action)
+getSocketSignal = do 
   wsUrl <- getWsUrl
   wsInput <- channel Socket.Starting
   statsSig <- Socket.setupWs wsInput wsUrl
-  let wsSignal = subscribe wsInput
-  let socketSignal = wsSignal ~> Received
-  pure socketSignal
+  pure $ subscribe wsInput
 
-configRoute :: forall eff. Eff (dom :: DOM | eff) (Signal Action)
-configRoute = do
+getRouteSignal :: forall eff. Eff (dom :: DOM | eff) (Signal Route)
+getRouteSignal = do
   urlSignal <- sampleUrl
-  -- | Map a signal of URL changes to PageView actions.
-  pure $ urlSignal ~> match >>> PageView
+  pure $ urlSignal ~> match
 
 getWsUrl :: forall eff. Eff (dom :: DOM, err :: EXCEPTION | eff) String
-getWsUrl = getInitialPath >>= convertToWsUrl
+getWsUrl = window >>= location >>= pathname >>= convertToWsUrl
 
 convertToWsUrl :: forall eff. String -> Eff (err :: EXCEPTION | eff) String
 convertToWsUrl url = 
@@ -76,15 +76,12 @@ convertToWsUrl url =
       pure $ U.printURI $ U.URI wsScheme wsH Nothing Nothing
     _ -> throwException $ error "Could not get the URL for the stats websocket"
 
-getInitialPath :: forall eff. Eff (dom :: DOM | eff) String
-getInitialPath =  window >>= location >>= pathname
 
 -- | Entry point for the browser.
 main :: Eff (CoreEffects AppEffects) (App State Action)
 main = do
     app <- start =<< config init
     renderToDOM "#app" app.html
-    -- | Used by hot-reloading code in support/index.js
     pure app
 
 -- | Entry point for the browser with pux-devtool injected.
