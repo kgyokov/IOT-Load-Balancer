@@ -74,7 +74,9 @@ convertToWsUrl url =
           wsH = U.HierarchicalPart auth wsPath
       in
       pure $ U.printURI $ U.URI wsScheme wsH Nothing Nothing
-    _ -> throwException $ error "Could not get the URL for the stats websocket"
+    _ -> 
+      let msg = "Could not convert " <> url <> "to the stats websocket URL" in
+      throwException $ error msg
 
 
 -- | Entry point for the browser.
