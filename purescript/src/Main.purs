@@ -43,7 +43,7 @@ config state = do
     , update: fromSimple update
     , view: view
     , inputs: 
-        [ routeSignal ~> PageView
+        [ routeSignal ~> match ~> PageView
         , socketSignal ~> Received ] }
 
 getSocketSignal :: forall eff. Eff (dom :: DOM, err :: EXCEPTION, channel :: CHANNEL, ws :: WEBSOCKET | eff) (Signal Socket.Action)
@@ -53,10 +53,10 @@ getSocketSignal = do
   statsSig <- Socket.setupWs wsInput wsUrl
   pure $ subscribe wsInput
 
-getRouteSignal :: forall eff. Eff (dom :: DOM | eff) (Signal Route)
+getRouteSignal :: forall eff. Eff (dom :: DOM | eff) (Signal String)
 getRouteSignal = do
   urlSignal <- sampleUrl
-  pure $ urlSignal ~> match
+  pure $ urlSignal
 
 getWsUrl :: forall eff. Eff (dom :: DOM, err :: EXCEPTION | eff) String
 getWsUrl = window >>= location >>= pathname >>= convertToWsUrl
