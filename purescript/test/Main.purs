@@ -29,6 +29,9 @@ main = runTest do
     test "Port" do
       url <- liftEff $ convertToWsUrl "http://test.org:80"
       Assert.equal url "ws://test.org:80/ws/stats"
+    test "Host" do
+      url <- liftEff $ convertToWsUrl "http://test.org"
+      Assert.equal url "ws://test.org/ws/stats"
     test "Relative" do
       e <- liftEff' $ convertToWsUrl "/static/index.html"
       either (const success) (\r -> failure $ "Converted invalid URL to " <> r) e
