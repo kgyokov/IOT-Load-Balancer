@@ -10,7 +10,7 @@ import Data.URI.Types (HierarchicalPart(..))
 
 import DOM (DOM)
 import DOM.HTML (window)
-import DOM.HTML.Location (pathname)
+import DOM.HTML.Location (host,port)
 import DOM.HTML.Window(location)
 import Data.URI as U
 import Data.Path.Pathy((</>),dir,file,rootDir)
@@ -59,7 +59,10 @@ getRouteSignal = do
   pure $ urlSignal
 
 getWsUrl :: forall eff. Eff (dom :: DOM, err :: EXCEPTION | eff) String
-getWsUrl = window >>= location >>= pathname >>= convertToWsUrl
+getWsUrl = 
+  let loc = (window >>= location) in do
+  host <- loc >>= host
+  pure $ "ws://" <> host <> "/ws/stats"
 
 convertToWsUrl :: forall eff. String -> Eff (err :: EXCEPTION | eff) String
 convertToWsUrl url = 
