@@ -14,7 +14,8 @@
     "purescript-argonaut": "^2.0.0",
     "purescript-css": "^2.1.0",
     "purescript-uri": "2.0.0",
-    "purescript-assert": "2.0.0"
+    "purescript-assert": "2.0.0",
+    "purescript-test-unit": "10.1.0"
   },
   "resolutions": {
     "purescript-css": "^2.1.0"
