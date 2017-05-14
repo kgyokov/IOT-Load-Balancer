@@ -59,27 +59,9 @@ getRouteSignal = do
   pure $ urlSignal
 
 getWsUrl :: forall eff. Eff (dom :: DOM, err :: EXCEPTION | eff) String
-getWsUrl = 
-  let loc = (window >>= location) in do
-  host <- loc >>= host
+getWsUrl = do
+  host <- window >>= location >>= host
   pure $ "ws://" <> host <> "/ws/stats"
-
-convertToWsUrl :: forall eff. String -> Eff (err :: EXCEPTION | eff) String
-convertToWsUrl url = 
-  case U.runParseURI url of
-    Right 
-      (U.URI _ 
-        h@(U.HierarchicalPart auth@(Just _) _ )
-       _  _
-      ) ->
-      let wsScheme = Just (U.URIScheme "ws")
-          wsPath = (Just (Right (rootDir </> dir "ws" </> file "stats")))
-          wsH = U.HierarchicalPart auth wsPath
-      in
-      pure $ U.printURI $ U.URI wsScheme wsH Nothing Nothing
-    _ -> 
-      let msg = "Could not convert " <> url <> "to the stats websocket URL" in
-      throwException $ error msg
 
 
 -- | Entry point for the browser.
