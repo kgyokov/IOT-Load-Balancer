@@ -204,9 +204,9 @@ connect_to_broker(Address,Port,Opts)->
 forward_to_broker(Packet,S = #state{socket = BrokerSender}) ->
   Binary = mqttl_builder:build_packet(Packet),
   error_logger:info_msg("Sending to broker Packet ~p with Binary ~p~n",[Packet,Binary]),
-  case gen_tcp:send(BrokerSender,Binary)of
+  case gen_tcp:send(BrokerSender,Binary) of
     ok ->
       {reply,ok,S};
-    {error, _Reason} ->
-      {stop, unable_to_send, {error,_Reason}, S}
+    {error,Reason} ->
+      {stop, unable_to_send, {error,Reason}, S}
   end.
