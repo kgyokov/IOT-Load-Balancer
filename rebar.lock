@@ -12,7 +12,7 @@
   0},
  {<<"mqttl">>,
   {git,"https://github.com/kgyokov/MQTT-Lib.git",
-       {ref,"4611ba66fecd64a5260397ed0457f19f0c1ef23b"}},
+       {ref,"4bc541607e7c57237ff96aaab2113ba82d9e70bf"}},
   0},
  {<<"ranch">>,
   {git,"https://github.com/ninenines/ranch",
