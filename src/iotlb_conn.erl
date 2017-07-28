@@ -26,10 +26,14 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-  transport_info ::any(),
-  connected::boolean(),
   sup_pid :: pid(),
-  socket :: port()                 %% The process sending to the actual device
+  transport_info ::any(),
+  auth ::module(),
+  auth_ctx :: any(),
+  sub_auth ::pid(),
+  connected::boolean(),
+  c_sender :: pid(),          %% The process sending to the client
+  b_socket :: port()            %% The socket sending to the broker
 }).
 
 %%%===================================================================
@@ -83,7 +87,9 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   link(ReceiverPid),
   TimeOut = maps:get(conn_timeout,Opts,10000),
   erlang:send_after(TimeOut,self(),conn_timeout),
+  Auth = maps:get(auth,Opts,mqttl_auth_default),
   {ok, #state{sup_pid = SupPid,
+              auth = Auth,
               connected = false,
               transport_info = TSO}
   }.
@@ -104,28 +110,18 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_call({packet,Packet = #'CONNECT'{client_id = ClientId}},_From,
-              S = #state{connected = false,
-                         sup_pid = SupPid,
-                         transport_info = TRO}) ->
-  %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
-  {_,_,Opts} = TRO,
-  {Address,Port} = iotlb_broker_selection:select_broker(Packet),
-  {ok,BrokerSocket} = connect_to_broker(Address,Port,Opts),
-  {ok,BrokerForwarder} = iotlb_conn_sup:start_bsender(SupPid, TRO,BrokerSocket),
-  ok = gen_tcp:controlling_process(BrokerSocket,BrokerForwarder),
-  S1 = S#state{socket = BrokerSocket,connected = true},
-  iotlb_stats_col:connected(self(),ClientId,{Address,Port}),
-  forward_to_broker(Packet,S1);
+handle_call({packet,P = #'CONNECT'{}},_From, S = #state{connected = false}) ->  handle_connect(P,S);
+handle_call({packet,_P}              ,_From, S = #state{connected = false}) ->  {stop, premature_packet, S}; %%Maybe specify a different reason
 
-handle_call({packet,_Packet},_From,S = #state{connected = false}) ->
-  {stop, premature_packet, S}; %%Maybe specify a different reason
+handle_call({packet,P = #'SUBSCRIBE'{}},_From, S) -> handle_subscribe(P,S);
+handle_call({packet,P = #'PUBLISH'{}},_From, S) -> handle_publish(P,S);
 
-handle_call({packet,Packet},_From,S = #state{connected = true}) ->
-  forward_to_broker(Packet,S);
+
+handle_call({packet,P},_From,S) ->
+  forward_to_broker(P,S);
 
 handle_call(_Request, _From, State) ->
-  {reply, ok, State}.
+  {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -197,14 +193,58 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+handle_connect(Packet,S = #state{connected = false, auth = Auth}) ->
+  %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
+  case Auth:connect(Packet) of
+    {ok,AuthCtx}    -> finish_connect(Packet,S#state{auth_ctx = AuthCtx});
+    {error,Code}    -> reject_connection(Code,S)
+  end.
+
+finish_connect(Packet = #'CONNECT'{client_id = ClientId},S) ->
+  {Address,Port} = iotlb_broker_selection:select_broker(Packet),
+  S1 = create_broker_conn(Address,Port,S),
+  iotlb_stats_col:connected(self(),ClientId,{Address,Port}),
+  forward_to_broker(Packet,S1).
+
+create_broker_conn(Address,Port,S = #state{sup_pid = SupPid, transport_info = TRO}) ->
+  {_,_,Opts} = TRO,
+  {ok,BrokerSocket} = connect_to_broker(Address,Port,Opts),
+  {ok, ClientSender} = iotlb_conn_sup:start_bsender(SupPid,TRO,BrokerSocket),
+  ok = gen_tcp:controlling_process(BrokerSocket, ClientSender),
+  S#state{b_socket = BrokerSocket,
+          c_sender = ClientSender,
+          connected = true}.
+
+reject_connection(Code, S = #state{transport_info = {Transport,CSock,_}}) ->
+  Packet = #'CONNACK'{return_code = Code, session_present = false},
+  Binary = mqttl_builder:build_packet(Packet),
+  ok = Transport:send(CSock,Binary),
+  {stop,normal,S}.
+
+handle_subscribe(P,S = #state{sub_auth = SubAuth, c_sender = CSender}) ->
+  {ok,Interc} = iotlb_sub_filter_s:intercept_req(SubAuth,P),
+  case Interc of
+    {forward,FilteredP} ->
+      forward_to_broker(FilteredP,S);
+    ignore ->
+      iotlb_bsender:forward_to_client(CSender,P),
+      {reply,ok,S}
+  end.
+
+handle_publish(P = #'PUBLISH'{qos = QoS,topic = Topic},S = #state{auth = Auth, auth_ctx = Ctx}) ->
+  case Auth:publish(Topic,QoS,Ctx) of
+    ok        -> forward_to_broker(P,S);
+    {error,_} -> {stop,normal,S}
+  end.
+
 connect_to_broker(Address,Port,Opts)->
   ConnTimeOut = maps:get(server_connect_timeout,Opts,10000),
   gen_tcp:connect(Address,Port,[binary, {active,true}],ConnTimeOut).
 
-forward_to_broker(Packet,S = #state{socket = BrokerSender}) ->
+forward_to_broker(Packet,S = #state{b_socket = BSocket}) ->
   Binary = mqttl_builder:build_packet(Packet),
   error_logger:info_msg("Sending to broker Packet ~p with Binary ~p~n",[Packet,Binary]),
-  case gen_tcp:send(BrokerSender,Binary) of
+  case gen_tcp:send(BSocket,Binary) of
     ok ->
       {reply,ok,S};
     {error,Reason} ->

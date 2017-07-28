@@ -4,15 +4,15 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 13. Mar 2017 11:35 PM
+%%% Created : 19. Jul 2017 3:06 AM
 %%%-------------------------------------------------------------------
--module(iotlb_bsender).
+-module(iotlb_sub_filter_s).
 -author("Kalin").
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/2, forward_to_client/2]).
+-export([start_link/0, intercept_req/2, merge_resp/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -24,7 +24,11 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {transport, transport_ref,broker_socket,opts}).
+-record(state, {
+  auth :: module(),
+  auth_ctx :: any(),
+  dict:: dict:dict()
+}).
 
 %%%===================================================================
 %%% API
@@ -36,17 +40,16 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link({Transport::any(),TRef ::any(),Opts::[any()]},BrokerSpec::any()) ->
+-spec(start_link() ->
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link({Transport,TRef,Opts},BrokerSocket) ->
-  gen_server:start_link(?MODULE, [Transport,TRef,Opts,BrokerSocket], []).
+start_link() ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-forward_to_client(Pid,Packet) ->
-  gen_server:cast(Pid,{forward,Packet}).
+intercept_req(Pid,Packet) ->
+  gen_server:call(Pid,{request_subs,Packet}).
 
-%%%%@todo: Bi-directional packet inspection
-%%forward_to_client(Pid,Binary) ->
-%%  gen_server:call(Pid,{to_client,Binary}).
+merge_resp(Pid,Packet) ->
+  gen_server:call(Pid,{merge_resp,Packet}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -66,11 +69,8 @@ forward_to_client(Pid,Packet) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([Transport,TRef,Opts,BrokerSocket]) ->
-  {ok, #state{transport = Transport,
-              transport_ref = TRef,
-              broker_socket = BrokerSocket,
-              opts = Opts}}.
+init([]) ->
+  {ok, #state{dict = dict:new()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,8 +88,16 @@ init([Transport,TRef,Opts,BrokerSocket]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
+handle_call({request_subs,SubPacket}, _From, S = #state{dict = Dict,auth = Auth, auth_ctx = Ctx}) ->
+  {Interc,Dict1} = iotlb_sub_filter:intercept_req(SubPacket,Auth,Ctx,Dict),
+  {reply, {ok,Interc}, S#state{dict = Dict1}};
+
+handle_call({merge_resp,SubAckPacket}, _From, S = #state{dict = Dict}) ->
+  {ActualResp,Dict1} = iotlb_sub_filter:merge_resp(SubAckPacket,Dict),
+  {reply, {ok,ActualResp}, S#state{dict = Dict1}};
+
 handle_call(_Request, _From, State) ->
-  {noreply, ok, State}.
+  {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,13 +110,6 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
-
-handle_cast({forward,Packet}, S = #state{transport_ref = TRef,
-                                         transport = Transport}) ->
-  Binary = mqttl_builder:build_packet(Packet),
-  Transport:send(TRef,Binary),
-  {noreply, S};
-
 handle_cast(_Request, State) ->
   {noreply, State}.
 
@@ -126,19 +127,6 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
-
-handle_info({tcp,_,Binary},S = #state{transport_ref = TRef,
-                                      transport = Transport}) ->
-  error_logger:info_msg("Sending back binary ~p~n",[Binary]),
-  Transport:send(TRef,Binary),
-  {noreply,S};
-
-handle_info({tcp_closed, _Socket},S) ->
-  {stop,normal,S};
-
-handle_info({tcp_error, _Socket, _Reason},S) ->
-  {stop,normal,S};
-
 handle_info(_Info, State) ->
   {noreply, State}.
 
@@ -155,12 +143,8 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
-terminate(_Reason, #state{broker_socket = BrokerSocket}) ->
-  error_logger:info_msg("Bidirectional sender terminatig with reason ~p~n",[_Reason]),
-  case BrokerSocket of
-    undefined -> ok;
-    _ -> gen_tcp:close(BrokerSocket)
-  end.
+terminate(_Reason, _State) ->
+  ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -179,7 +163,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-handle_binary(Binary,S = #state{transport_ref = TRef,transport = Transport}) ->
-  Transport:send(TRef,Binary).
-  %% mqttl_parser:parse_packet()
