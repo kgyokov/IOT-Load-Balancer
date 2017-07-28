@@ -196,8 +196,8 @@ code_change(_OldVsn, State, _Extra) ->
 handle_connect(Packet,S = #state{connected = false, auth = Auth}) ->
   %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
   case Auth:connect(Packet) of
-    {ok,AuthCtx}    -> finish_connect(Packet,S#state{auth_ctx = AuthCtx});
-    {error,Code}    -> reject_connection(Code,S)
+    {ok,NewPacket,AuthCtx}    -> finish_connect(NewPacket,S#state{auth_ctx = AuthCtx});
+    {error,Code}              -> reject_connection(Code,S)
   end.
 
 finish_connect(Packet = #'CONNECT'{client_id = ClientId},S) ->

@@ -44,10 +44,6 @@ start_link({Transport,TRef,Opts},BrokerSocket) ->
 forward_to_client(Pid,Packet) ->
   gen_server:cast(Pid,{forward,Packet}).
 
-%%%%@todo: Bi-directional packet inspection
-%%forward_to_client(Pid,Binary) ->
-%%  gen_server:call(Pid,{to_client,Binary}).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -182,4 +178,3 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_binary(Binary,S = #state{transport_ref = TRef,transport = Transport}) ->
   Transport:send(TRef,Binary).
-  %% mqttl_parser:parse_packet()

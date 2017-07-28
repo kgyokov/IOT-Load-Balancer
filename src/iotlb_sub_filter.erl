@@ -21,14 +21,13 @@ intercept_req(P = #'SUBSCRIBE'{packet_id = PacketId, subscriptions = Subs},Auth,
   NewQoS = [Auth:subscribe(Sub,AuthCtx) || Sub <- Subs],
   UpdatedSubs = lists:zipwith(fun({Topic,_},QoS) -> {Topic,QoS} end, Subs, NewQoS),
   AllowedSubs = [S || S = {_,QoS} <- UpdatedSubs, QoS =/= ?REJECTED],
-  Dict1 =
-    case AllowedSubs of
-      [] -> {ignore,Dict};
-      _ ->
-        P1 = P#'SUBSCRIBE'{subscriptions = AllowedSubs},
-        Dict1 = store_qos(PacketId,NewQoS,Dict),
-        {{forward,P1},Dict1}
-    end.
+  case AllowedSubs of
+    [] -> {ignore,Dict};
+    _ ->
+      P1 = P#'SUBSCRIBE'{subscriptions = AllowedSubs},
+      Dict1 = store_qos(PacketId,NewQoS,Dict),
+      {{forward,P1},Dict1}
+  end.
 
 
 store_qos(PacketId,NewSubs,Dict) ->
