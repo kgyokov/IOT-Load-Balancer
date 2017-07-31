@@ -28,9 +28,7 @@
 -record(state, {
   sup_pid :: pid(),
   transport_info ::any(),
-  auth ::module(),
-  auth_ctx :: any(),
-  sub_auth ::pid(),
+  interceptor::{module(),Ctx::any()},
   connected::boolean(),
   c_sender :: pid(),          %% The process sending to the client
   b_socket :: port()            %% The socket sending to the broker
@@ -87,9 +85,9 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
   link(ReceiverPid),
   TimeOut = maps:get(conn_timeout,Opts,10000),
   erlang:send_after(TimeOut,self(),conn_timeout),
-  Auth = maps:get(auth,Opts,mqttl_auth_default),
+  Interc = maps:get(interceptors,Opts,{iotlb_interc_default,default}),
   {ok, #state{sup_pid = SupPid,
-              auth = Auth,
+              interceptor = Interc,
               connected = false,
               transport_info = TSO}
   }.
@@ -112,13 +110,7 @@ init([ReceiverPid,SupPid,TSO = {_,_,Opts}]) ->
 
 handle_call({packet,P = #'CONNECT'{}},_From, S = #state{connected = false}) ->  handle_connect(P,S);
 handle_call({packet,_P}              ,_From, S = #state{connected = false}) ->  {stop, premature_packet, S}; %%Maybe specify a different reason
-
-handle_call({packet,P = #'SUBSCRIBE'{}},_From, S) -> handle_subscribe(P,S);
-handle_call({packet,P = #'PUBLISH'{}},_From, S) -> handle_publish(P,S);
-
-
-handle_call({packet,P},_From,S) ->
-  forward_to_broker(P,S);
+handle_call({packet,P}               ,_From, S) -> handle_regular_packet(P,S);
 
 handle_call(_Request, _From, State) ->
   {noreply, State}.
@@ -193,11 +185,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-handle_connect(Packet,S = #state{connected = false, auth = Auth}) ->
+%%apply_interceptor({Mod,Ctx},P) ->
+%%  {NewP,NewCtx} = Mod:connect(P,Ctx),
+%%  {NewP,{Mod,NewCtx}}.
+
+handle_connect(Packet,S = #state{connected = false, interceptor = {Interc,Ctx}}) ->
   %%@todo: Packet validation to avoid bad packets being sent to the wrong server???
-  case Auth:connect(Packet) of
-    {ok,NewPacket,AuthCtx}    -> finish_connect(NewPacket,S#state{auth_ctx = AuthCtx});
-    {error,Code}              -> reject_connection(Code,S)
+  case Interc:connect(Packet,Ctx) of
+    {{forward,NewPacket},NewCtx} -> finish_connect(NewPacket,S#state{interceptor = {Interc,NewCtx}});
+    {{stop,Code},NewCtx}         -> reject_connection(Code,S#state{interceptor = {Interc,NewCtx}})
   end.
 
 finish_connect(Packet = #'CONNECT'{client_id = ClientId},S) ->
@@ -221,20 +217,16 @@ reject_connection(Code, S = #state{transport_info = {Transport,CSock,_}}) ->
   ok = Transport:send(CSock,Binary),
   {stop,normal,S}.
 
-handle_subscribe(P,S = #state{sub_auth = SubAuth, c_sender = CSender}) ->
-  {ok,Interc} = iotlb_sub_filter_s:intercept_req(SubAuth,P),
-  case Interc of
-    {forward,FilteredP} ->
-      forward_to_broker(FilteredP,S);
-    ignore ->
-      iotlb_bsender:forward_to_client(CSender,P),
-      {reply,ok,S}
-  end.
-
-handle_publish(P = #'PUBLISH'{qos = QoS,topic = Topic},S = #state{auth = Auth, auth_ctx = Ctx}) ->
-  case Auth:publish(Topic,QoS,Ctx) of
-    ok        -> forward_to_broker(P,S);
-    {error,_} -> {stop,normal,S}
+handle_regular_packet(P,S = #state{interceptor = {Interc,Ctx}, c_sender = CSender}) ->
+  {Reply,Forward,NewCtx} = Interc:client_to_server(P,Ctx),
+  S1 = S#state{interceptor = {Interc,NewCtx}},
+  case Reply of
+    {reply,Resp} ->  iotlb_bsender:forward_to_client(CSender,Resp);
+    noreply -> ok
+  end,
+  case Forward of
+    {forward,NewP} -> forward_to_broker(NewP,S1);
+    {stop,Reason} -> {stop,normal,{error,Reason},S1}
   end.
 
 connect_to_broker(Address,Port,Opts)->
